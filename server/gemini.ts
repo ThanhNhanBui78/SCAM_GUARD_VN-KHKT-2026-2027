@@ -3,7 +3,7 @@ import { GoogleGenAI, GenerateContentParameters, GenerateContentResponse } from 
 let geminiClient: GoogleGenAI | null = null;
 
 // Primary and fallback models according to latest Gemini API guidelines
-export const GEMINI_MODEL = 'gemini-3.8-flash';
+export const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 export const FALLBACK_MODELS = ['gemini-3.1-flash-lite'];
 
 // Cooldown tracker when quota / 429 / 503 rate limits occur
@@ -80,7 +80,8 @@ export async function executeGeminiWithFallback(
       return response;
     } catch (err: any) {
       if (isTemporaryServiceError(err)) {
-        console.warn(`Model ${model} unavailable or under high demand (503/429). Switching to next fallback model...`);
+        console.warn(`Model ${model} unavailable or under high demand (503/429): ${String(err?.message || err).slice(0, 200)'}
+`);
         // Briefly pause if all models might be hit
         quotaExhaustedUntil = Date.now() + 5000;
         continue;
