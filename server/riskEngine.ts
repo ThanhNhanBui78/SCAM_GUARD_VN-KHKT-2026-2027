@@ -444,9 +444,10 @@ Trả về JSON chuẩn xác:
         responseMimeType: 'application/json',
         systemInstruction: 'Bạn là Hệ Thống Giám Định Pháp Y Số SCAMGUARD VN. Phân tích khoa học, thận trọng, không đưa ra tuyên bố tuyệt đối sai lệch.',
         temperature: 0.1,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
       },
     });
+    console.warn('Gemini finishReason:', response?.candidates?.[0]?.finishReason, 'textLength:', response?.text?.length ?? 0);
 
     if (response?.text) {
       const parsed = JSON.parse(response.text.trim());
