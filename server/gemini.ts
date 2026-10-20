@@ -80,8 +80,7 @@ export async function executeGeminiWithFallback(
       return response;
     } catch (err: any) {
       if (isTemporaryServiceError(err)) {
-        console.warn(`Model ${model} unavailable or under high demand (503/429): ${String(err?.message || err).slice(0, 200)'}
-`);
+        console.warn(`Model ${model} unavailable or under high demand (503/429): ${String(err?.message || err).slice(0, 200)}`);
         // Briefly pause if all models might be hit
         quotaExhaustedUntil = Date.now() + 5000;
         continue;
