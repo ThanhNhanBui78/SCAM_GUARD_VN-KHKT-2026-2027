@@ -263,7 +263,64 @@ export async function analyzeScamContent(req: RawAnalysisRequest): Promise<Analy
     heuristicScore += 20;
   }
 
-  heuristicScore = Math.min(99, heuristicScore);
+    // BỔ SUNG: nhận diện thêm các chiêu lừa phổ biến (đọc được cả tin có dấu và không dấu)
+  const plainText = lowerText.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd');
+  const hasAny = (words: string[]) => words.some((w) => plainText.includes(w));
+  const extraRules: { words: string[]; name: string; description: string; category: RiskSignal['category']; score: number }[] = [
+    {
+      words: ['doi so', 'so moi', 'me day', 'bo day', 'con day', 'anh day', 'chi day', 'nho chuyen', 'chuyen gap', 'muon tam', 'vay gap'],
+      name: 'Giả Danh Người Thân / Người Quen (Family Impersonation)',
+      description: 'Tự xưng là người thân, báo đổi số mới và nhờ chuyển tiền gấp.',
+      category: 'Impersonation',
+      score: 30,
+    },
+    {
+      words: ['khong duoc ke', 'khong ke voi ai', 'dung noi voi', 'dung ke voi', 'giu bi mat', 'ket ban zalo', 'cai ung dung', 'tai app'],
+      name: 'Cô Lập & Giữ Bí Mật (Isolation)',
+      description: 'Yêu cầu không kể với ai hoặc chuyển sang kênh riêng để nạn nhân không được người khác cảnh báo.',
+      category: 'Emotional Manipulation',
+      score: 25,
+    },
+    {
+      words: ['trung thuong', 'trung giai', 'ban trung', 'ban da trung', 'nhan qua', 'qua tang', 'phan thuong', 'tri an khach hang'],
+      name: 'Dụ Dỗ Bằng Quà / Trúng Thưởng (Greed)',
+      description: 'Thông báo trúng thưởng hoặc tặng quà bất ngờ để dụ nạn nhân đóng phí hoặc cung cấp thông tin.',
+      category: 'Emotional Manipulation',
+      score: 30,
+    },
+    {
+      words: ['viec nhe', 'luong cao', 'like video', 'cong tac vien', 'hoa hong', 'kiem tien online', 'lam nhiem vu', 'kich hoat nhiem vu'],
+      name: 'Việc Nhẹ Lương Cao / Làm Nhiệm Vụ (Task Scam)',
+      description: 'Mời làm việc online dễ dàng thu nhập cao, sau đó yêu cầu nạp tiền để nhận nhiệm vụ.',
+      category: 'Emotional Manipulation',
+      score: 30,
+    },
+    {
+      words: ['chuyen tien', 'chuyen gap', 'chuyen phi', 'nap ', 'dong phi', 'phi van chuyen', 'phi kich hoat', 'phi nhan'],
+      name: 'Yêu Cầu Chuyển Tiền / Đóng Phí (Payment Request)',
+      description: 'Đòi chuyển tiền, nạp tiền hoặc đóng một khoản phí trước khi nhận quyền lợi.',
+      category: 'Financial',
+      score: 25,
+    },
+    {
+      words: ['rua tien', 'vu an', 'lenh bat', 'truy na', 'khoi to', 'ma tuy', 'phong toa tai khoan'],
+      name: 'Đe Dọa Pháp Lý (Legal Threat)',
+      description: 'Đe dọa liên quan vụ án, rửa tiền, lệnh bắt để gây hoảng sợ.',
+      category: 'Emotional Manipulation',
+      score: 25,
+    },
+  ];
+  let extraMatches = 0;
+  extraRules.forEach((rule) => {
+    if (hasAny(rule.words)) {
+      signals.push({ name: rule.name, scoreContribution: rule.score, description: rule.description, category: rule.category });
+      heuristicScore += rule.score;
+      extraMatches++;
+    }
+  });
+  if (extraMatches >= 2) heuristicScore += 15;
+
+heuristicScore = Math.min(99, heuristicScore);
   let defaultRiskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE' = 'SAFE';
   if (heuristicScore >= 70) defaultRiskLevel = 'HIGH';
   else if (heuristicScore >= 40) defaultRiskLevel = 'MEDIUM';
