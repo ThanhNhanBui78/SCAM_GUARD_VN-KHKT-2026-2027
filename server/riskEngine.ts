@@ -423,7 +423,7 @@ QUY TẮC KHOA HỌC & AN TOÀN TUYỆT ĐỐI:
 2. Trích xuất đúng phân đoạn bằng chứng gốc (evidence snippet).
 3. Đánh giá 6 chiều tâm lý: Time Pressure, Authority Fear, Financial Greed, Emotional Manipulation, Convenience Bias, Trust/Credulity.
 4. Viết cực kỳ súc tích, ngắn gọn bằng tiếng Việt.
-5. Chỉ dùng tiếng Việt có dấu (được giữ thuật ngữ tiếng Anh). Tuyệt đối không dùng chữ Hán/Trung Quốc hay ký tự của ngôn ngữ khác.
+5. Viết tiếng Việt có đầy đủ dấu (ví dụ viết "lừa đảo", không viết "lua dao"), được giữ thuật ngữ tiếng Anh. Không chèn chữ Hán/Trung Quốc vào câu.
 
 Trả về JSON chuẩn xác:
 {
