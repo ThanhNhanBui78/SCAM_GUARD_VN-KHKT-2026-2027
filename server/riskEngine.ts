@@ -1,5 +1,5 @@
 import { AnalysisResult, RiskSignal, ScamTactic } from '../src/types';
-import { executeGeminiWithFallback, GEMINI_MODEL } from './gemini';
+import { executeGeminiWithFallback, GEMINI_MODEL, stripHanCharacters } from './gemini';
 import { sanitizeAndRedactPII, defendPromptInjection } from './safety';
 
 export interface RawAnalysisRequest {
@@ -336,43 +336,69 @@ heuristicScore = Math.min(99, heuristicScore);
     });
   }
 
+  // Kết quả mặc định của bộ quy tắc: chỉ mô tả đúng những dấu hiệu bộ quy tắc thực sự tìm thấy
+  const hasCategory = (category: RiskSignal['category']) => signals.some((s) => s.category === category);
+  const hasSignals = signals.length > 0;
+  const signalNames = Array.from(new Set(signals.map((s) => s.name)));
+  const ruleTactics: ScamTactic[] = [];
+  if (hasCategory('Impersonation')) ruleTactics.push('Authority');
+  if (hasCategory('Urgency')) ruleTactics.push('Urgency');
+  if (hasCategory('Financial')) ruleTactics.push('Greed');
+  if (hasCategory('Emotional Manipulation')) ruleTactics.push('Fear');
+
   // LAYER 4: Gemini Multimodal Reasoning with Structured Output
   let finalResult: AnalysisResult = {
     riskLevel: defaultRiskLevel,
     riskScore: heuristicScore,
     signals,
-    summary: 'Nội dung chứa nhiều dấu hiệu kỹ nghệ xã hội đáng ngờ.',
-    detectedTactics: ['Urgency', 'Authority'],
-    explanationsByPersona: {
-      child: 'Tin nhắn này có dấu hiệu lừa gạt bạn đấy. Đừng bao giờ bấm vào link lạ và hãy đưa người lớn xem nhé!',
-      teen: 'Cảnh báo: Thủ đoạn tạo tin giả và liên kết bẫy nhằm đánh cắp tài khoản hoặc tài sản của bạn.',
-      adult: 'Dấu hiệu rõ ràng của tấn công phi kỹ thuật (Social Engineering). Tuyệt đối không bấm link và hãy xác minh qua kênh chính thống.',
-      senior: 'Cẩn trọng: Đối tượng dồn ép vội vàng. Xin đừng bấm link hay chuyển tiền, hãy gọi cho con cháu hoặc ngân hàng kiểm tra.',
-      expert: 'Vector tấn công lừa đảo trực tuyến kết hợp áp lực thời gian (Time Pressure) và thu thập thông tin bảo mật (Credential Harvesting).',
-    },
-    redFlags: ['Tạo áp lực thời gian khẩn cấp', 'Yêu cầu truy cập liên kết lạ', 'Yêu cầu thông tin nhạy cảm'],
-    recommendedSteps: [
-      'Không thao tác bấm liên kết hoặc chuyển tiền.',
-      'Gọi trực tiếp đường dây nóng chính thức của tổ chức để xác minh độc lập.',
-      'Báo cáo tin nhắn đến tổng đài 156 / Cục An toàn Thông tin.',
-    ],
+    summary: hasSignals
+      ? `Bộ quy tắc phát hiện ${signalNames.length} dấu hiệu đáng ngờ: ${signalNames.slice(0, 3).join('; ')}.`
+      : 'Bộ quy tắc chưa phát hiện dấu hiệu lừa đảo quen thuộc. Điểm thấp không có nghĩa là chắc chắn an toàn: nếu tin nhắn đòi tiền, mã OTP hoặc thông tin cá nhân, hãy xác minh qua kênh chính thức.',
+    detectedTactics: ruleTactics,
+    explanationsByPersona: hasSignals
+      ? {
+          child: 'Tin nhắn này có dấu hiệu lừa gạt bạn đấy. Đừng bao giờ bấm vào link lạ và hãy đưa người lớn xem nhé!',
+          teen: 'Cảnh báo: Thủ đoạn tạo tin giả và liên kết bẫy nhằm đánh cắp tài khoản hoặc tài sản của bạn.',
+          adult: 'Dấu hiệu rõ ràng của tấn công phi kỹ thuật (Social Engineering). Tuyệt đối không bấm link và hãy xác minh qua kênh chính thống.',
+          senior: 'Cẩn trọng: Đối tượng dồn ép vội vàng. Xin đừng bấm link hay chuyển tiền, hãy gọi cho con cháu hoặc ngân hàng kiểm tra.',
+          expert: 'Vector tấn công lừa đảo trực tuyến kết hợp áp lực thời gian (Time Pressure) và thu thập thông tin bảo mật (Credential Harvesting).',
+        }
+      : {
+          child: 'Máy chưa thấy dấu hiệu lừa gạt quen thuộc. Nếu ai nhắn xin tiền hay mật khẩu, hãy hỏi bố mẹ trước nhé!',
+          teen: 'Chưa thấy dấu hiệu lừa đảo quen thuộc, nhưng đừng chủ quan: không gửi OTP, mật khẩu hay chuyển tiền khi chưa xác minh.',
+          adult: 'Bộ quy tắc chưa phát hiện dấu hiệu lừa đảo quen thuộc. Vẫn nên xác minh qua kênh chính thức nếu tin nhắn liên quan đến tiền hoặc thông tin cá nhân.',
+          senior: 'Chưa thấy dấu hiệu đáng ngờ quen thuộc. Nếu tin nhắn nhờ chuyển tiền, xin gọi lại cho con cháu hoặc người thân để kiểm tra.',
+          expert: 'Không có tín hiệu nào khớp bộ quy tắc heuristic; kết quả không loại trừ các kịch bản lừa đảo mới chưa có trong bộ quy tắc.',
+        },
+    redFlags: signals.slice(0, 3).map((s) => s.description),
+    recommendedSteps: hasSignals
+      ? [
+          'Không thao tác bấm liên kết hoặc chuyển tiền.',
+          'Gọi trực tiếp đường dây nóng chính thức của tổ chức để xác minh độc lập.',
+          'Báo cáo tin nhắn đến tổng đài 156 / Cục An toàn Thông tin.',
+        ]
+      : [
+          'Nếu tin nhắn yêu cầu chuyển tiền, mã OTP hoặc thông tin cá nhân, hãy xác minh qua kênh chính thức trước khi làm theo.',
+          'Khi còn nghi ngờ, hỏi người thân hoặc gọi tổng đài chính thức của tổ chức được nhắc tới.',
+        ],
     piiRedacted,
     threatBreakdown: {
       maliciousUrl: urlFeatures ? urlFeatures.deterministicRiskScore : 10,
-      impersonation: 85,
-      urgency: 80,
-      credentialHarvesting: 90,
-      socialEngineering: 85,
+      impersonation: hasCategory('Impersonation') ? 85 : 10,
+      urgency: hasCategory('Urgency') ? 80 : 10,
+      credentialHarvesting: hasCategory('Financial') ? 85 : 10,
+      socialEngineering: Math.min(95, heuristicScore),
     },
     evidenceFound: evidenceList,
     threatClassification: {
-      primaryThreat: 'Social Engineering Phishing',
+      primaryThreat: hasSignals ? signals[0].name : 'Chưa phát hiện mối đe dọa rõ ràng',
       attackVector: req.url ? 'Malicious URL' : 'Manipulative Message',
-      target: 'Credentials & Assets',
-      potentialImpact: ['Financial Loss', 'Account Takeover'],
+      target: hasSignals ? 'Credentials & Assets' : 'Không xác định',
+      potentialImpact: hasSignals ? ['Financial Loss', 'Account Takeover'] : [],
       confidence: 88,
     },
-    attackChain: ['Tin nhắn tiếp cận nạn nhân', 'Mạo danh thực thể uy tín', 'Tạo bẫy tâm lý dồn ép', 'Thu thập tài khoản & OTP'],
+    attackChain: hasSignals ? ['Tin nhắn tiếp cận nạn nhân', 'Mạo danh thực thể uy tín', 'Tạo bẫy tâm lý dồn ép', 'Thu thập tài khoản & OTP'] : [],
+    analysisEngine: 'RULES_ONLY',
     urlAnalysis: urlFeatures ? {
       domain: urlFeatures.domain,
       anomalyDetected: urlFeatures.brandImpersonationFound || urlFeatures.suspiciousTld,
@@ -397,6 +423,7 @@ QUY TẮC KHOA HỌC & AN TOÀN TUYỆT ĐỐI:
 2. Trích xuất đúng phân đoạn bằng chứng gốc (evidence snippet).
 3. Đánh giá 6 chiều tâm lý: Time Pressure, Authority Fear, Financial Greed, Emotional Manipulation, Convenience Bias, Trust/Credulity.
 4. Viết cực kỳ súc tích, ngắn gọn bằng tiếng Việt.
+5. Chỉ dùng tiếng Việt có dấu (được giữ thuật ngữ tiếng Anh). Tuyệt đối không dùng chữ Hán/Trung Quốc hay ký tự của ngôn ngữ khác.
 
 Trả về JSON chuẩn xác:
 {
@@ -442,7 +469,7 @@ Trả về JSON chuẩn xác:
       contents,
       config: {
         responseMimeType: 'application/json',
-        systemInstruction: 'Bạn là Hệ Thống Giám Định Pháp Y Số SCAMGUARD VN. Phân tích khoa học, thận trọng, không đưa ra tuyên bố tuyệt đối sai lệch.',
+        systemInstruction: 'Bạn là Hệ Thống Giám Định Pháp Y Số SCAMGUARD VN. Phân tích khoa học, thận trọng, không đưa ra tuyên bố tuyệt đối sai lệch. Chỉ trả lời bằng tiếng Việt.',
         temperature: 0.1,
         maxOutputTokens: 8192,
       },
@@ -450,14 +477,30 @@ Trả về JSON chuẩn xác:
     console.warn('Gemini finishReason:', response?.candidates?.[0]?.finishReason, 'textLength:', response?.text?.length ?? 0);
 
     if (response?.text) {
-      const parsed = JSON.parse(response.text.trim());
-      finalResult = {
-        ...finalResult,
-        ...parsed,
-        riskScore: parsed.riskScore !== undefined ? Math.round((parsed.riskScore + heuristicScore) / 2) : heuristicScore,
-        piiRedacted,
-        assessmentId,
-      };
+      const parsed = JSON.parse(stripHanCharacters(response.text.trim()));
+      const aiScore = Number(parsed.riskScore);
+      const aiScored = Number.isFinite(aiScore);
+      // Có AI thì điểm AI quyết định (AI hiểu ngữ cảnh, sửa được cả bỏ sót lẫn báo nhầm của bộ quy tắc);
+      // không có AI thì dùng điểm bộ quy tắc.
+      if (aiScored) {
+        const aiTactics: string[] = Array.isArray(parsed.detectedTactics) ? parsed.detectedTactics : [];
+        const ruleBreakdown = finalResult.threatBreakdown!;
+        finalResult = {
+          ...finalResult,
+          ...parsed,
+          riskScore: Math.round(Math.max(0, Math.min(100, aiScore))),
+          analysisEngine: 'AI_GEMINI',
+          threatBreakdown: {
+            ...ruleBreakdown,
+            impersonation: Math.max(ruleBreakdown.impersonation, aiTactics.includes('Authority') ? 85 : 10),
+            urgency: Math.max(ruleBreakdown.urgency, aiTactics.includes('Urgency') || aiTactics.includes('Fear') ? 80 : 10),
+            socialEngineering: Math.round(Math.max(0, Math.min(95, aiScore))),
+          },
+          signals,
+          piiRedacted,
+          assessmentId,
+        };
+      }
     }
   } catch (err) {
     console.error('Gemini reasoning handled gracefully with deterministic fallback.', err);

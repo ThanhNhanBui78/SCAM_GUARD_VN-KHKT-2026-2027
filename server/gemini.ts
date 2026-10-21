@@ -32,6 +32,16 @@ export function isGeminiQuotaPaused(): boolean {
 }
 
 /**
+ * Some lightweight models occasionally insert Chinese (Han) characters into Vietnamese text.
+ * Strip them before parsing/displaying.
+ */
+const HAN_CHARACTERS = new RegExp('[' + String.fromCharCode(0x3400) + '-' + String.fromCharCode(0x9fff) + String.fromCharCode(0xf900) + '-' + String.fromCharCode(0xfaff) + ']', 'g');
+
+export function stripHanCharacters(text: string): string {
+  return text.replace(HAN_CHARACTERS, '');
+}
+
+/**
  * Helper to check if an error is a temporary 503 / 429 / overload issue
  */
 function isTemporaryServiceError(err: any): boolean {

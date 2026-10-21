@@ -154,6 +154,15 @@ export const ThreatAssessmentResult: React.FC<ThreatAssessmentResultProps> = ({
           <p className="text-[11px] text-slate-400 font-mono">
             Assessment Confidence: <span className="text-cyan-400 font-black">{confidence >= 75 ? 'HIGH' : confidence >= 45 ? 'MEDIUM' : 'LOW'}</span>
           </p>
+          {result.analysisEngine === 'AI_GEMINI' ? (
+            <p className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-lg px-2 py-1 mt-2">
+              🤖 Kết quả có AI (Gemini) phân tích ngữ cảnh
+            </p>
+          ) : (
+            <p className="text-[11px] font-mono font-bold text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-lg px-2 py-1 mt-2">
+              ⚙️ Kết quả từ bộ quy tắc từ khóa, chưa có AI phân tích. Điểm thấp không có nghĩa là chắc chắn an toàn.
+            </p>
+          )}
         </div>
 
         {/* Dynamic Indicator Badges inside result */}

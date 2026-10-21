@@ -259,6 +259,7 @@ export interface AnalysisResult {
     senderRiskScore: number;
   };
   assessmentId?: string;
+  analysisEngine?: 'AI_GEMINI' | 'RULES_ONLY';
   isInvalidBankImage?: boolean;
   invalidImageReason?: string;
 }

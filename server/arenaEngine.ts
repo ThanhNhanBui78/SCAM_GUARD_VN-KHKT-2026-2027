@@ -8,7 +8,7 @@ import {
   ScamTactic,
 } from '../src/types';
 import { SCAM_SCENARIOS } from '../src/data/scenarios';
-import { executeGeminiWithFallback, GEMINI_MODEL } from './gemini';
+import { executeGeminiWithFallback, GEMINI_MODEL, stripHanCharacters } from './gemini';
 import { sanitizeAndRedactPII, defendPromptInjection } from './safety';
 
 // In-memory active session store
@@ -277,12 +277,12 @@ TRẢ VỀ DUY NHẤT ĐỊNH DẠNG JSON HỢP LỆ:
       config: {
         responseMimeType: 'application/json',
         systemInstruction:
-          'Bạn là Bộ máy Mô phỏng Tác chiến Lừa Đảo Chuyên Sâu SCAMGUARD / ViSEF. Nhập vai kẻ lừa đảo giao tiếp tiếng Việt đời thường chân thực, tự nhiên và an toàn trong môi trường giáo dục.',
+          'Bạn là Bộ máy Mô phỏng Tác chiến Lừa Đảo Chuyên Sâu SCAMGUARD / ViSEF. Nhập vai kẻ lừa đảo giao tiếp tiếng Việt đời thường chân thực, tự nhiên và an toàn trong môi trường giáo dục. Chỉ dùng tiếng Việt, không dùng chữ Hán/Trung Quốc.',
       },
     });
 
     if (response?.text) {
-      const parsed = JSON.parse(response.text.trim());
+      const parsed = JSON.parse(stripHanCharacters(response.text.trim()));
       if (parsed.scammerResponse) scammerResponse = parsed.scammerResponse;
       if (parsed.nextTactic) nextTactic = parsed.nextTactic;
       if (parsed.tacticExplanation) tacticExplanation = parsed.tacticExplanation;
