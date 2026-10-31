@@ -342,6 +342,7 @@ export function createExpressApp() {
         mimeType: mimeType || 'image/png',
         declaredBank,
         declaredAmount,
+        context: optionalContext,
       });
 
       const sm = report?.structuralMetrics || {

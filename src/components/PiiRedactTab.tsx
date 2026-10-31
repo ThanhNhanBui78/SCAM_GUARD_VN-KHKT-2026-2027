@@ -1,109 +1,63 @@
 import React, { useState } from 'react';
-import { EyeOff, Shield, CheckCircle2, Upload } from 'lucide-react';
+import { EyeOff, Shield, CheckCircle2, ImageOff } from 'lucide-react';
+
+// Che thông tin nhạy cảm ngay trên trình duyệt, không gửi đi đâu.
+// Quy tắc giữ giống sanitizeAndRedactPII trong server/safety.ts (chỉ khác nhãn hiển thị).
+const OTP_WORDS = 'otp|m[aã]\\s*x[aá]c\\s*(?:th[uự]c|nh[aậ]n)|m[aã]\\s*b[aả]o\\s*m[aậ]t';
+const MASK_RULES: { label: string; regex: RegExp; keepGroup?: boolean; accept?: (match: string, group?: string) => boolean }[] = [
+  { label: 'SỐ THẺ', regex: /\b(?:\d[ -]*?){13,19}\b/g, accept: (m) => m.replace(/\D/g, '').length >= 13 },
+  { label: 'MÃ OTP', regex: /(\b(?:otp|code|pin|mã\s*otp)[:\s]+)[0-9]{4,8}\b/giu, keepGroup: true },
+  { label: 'MÃ OTP', regex: new RegExp(`((?:${OTP_WORDS})[^\\d\\n]{0,40}?)\\d{4,8}(?!\\d)`, 'giu'), keepGroup: true },
+  { label: 'MÃ OTP', regex: new RegExp(`(?<!\\d)\\d{6}(?!\\d)(?=[^\\d\\n]{0,25}(?:${OTP_WORDS}))`, 'giu') },
+  {
+    label: 'MẬT KHẨU',
+    regex: /(\b(?:password|m[aậ]t\s*kh[aẩ]u|pwd|pass)(?:\s*[:=]\s*|\s+(?:l[aà]\s+)?))[^\s,;]+/giu,
+    keepGroup: true,
+    accept: (m, g) => /[:=]/.test(g || '') || /[\d@#$!%^&*_]/.test(m.slice((g || '').length)),
+  },
+  { label: 'SỐ TÀI KHOẢN', regex: /((?:stk|s[oố]\s*t[aà]i\s*kho[aả]n|t[aà]i\s*kho[aả]n\s*s[oố]|account(?:\s*number)?)[\s:.#]*)\d(?:[\s.-]?\d){5,18}(?!\d)/giu, keepGroup: true },
+  { label: 'SỐ ĐIỆN THOẠI', regex: /(?<![\d.,])(?:\+84|0)(?:[\s.-]?\d){9,11}(?!\d)|(?<![\d\w])\+(?!84)\d{1,3}(?:[\s.-]?\d){6,12}(?!\d)/g },
+  { label: 'SỐ ĐIỆN THOẠI', regex: /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, accept: (m) => m.replace(/\D/g, '').length >= 10 },
+  { label: 'EMAIL', regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g },
+];
+
+function maskSensitiveText(input: string): { text: string; counts: Record<string, number> } {
+  let text = input;
+  const counts: Record<string, number> = {};
+  for (const rule of MASK_RULES) {
+    text = text.replace(rule.regex, (match: string, group?: unknown) => {
+      const prefix = rule.keepGroup && typeof group === 'string' ? group : '';
+      if (rule.accept && !rule.accept(match, prefix)) return match;
+      counts[rule.label] = (counts[rule.label] || 0) + 1;
+      return `${prefix}[${rule.label} ĐÃ CHE]`;
+    });
+  }
+  return { text, counts };
+}
 
 export const PiiRedactTab: React.FC = () => {
   const [rawPiiText, setRawPiiText] = useState(
-    'Họ tên tôi là Nguyễn Văn An, số điện thoại là 0912345678, số tài khoản Techcombank: 1903456789123, mã OTP nhận được là 482910.'
+    'Họ tên tôi là Nguyễn Văn An, số điện thoại là 0912 345 678, số tài khoản Techcombank: 1903456789123, mã OTP nhận được là 482910.'
   );
-  const [redactedPiiText, setRedactedPiiText] = useState('');
-  const [piiRedactedCount, setPiiRedactedCount] = useState(0);
-  const [redactedPiiImageBase64, setRedactedPiiImageBase64] = useState<string | null>(null);
+  const [masked, setMasked] = useState<{ text: string; counts: Record<string, number> } | null>(null);
 
-  // Helper to apply local mock PII redaction
-  const handleApplyPiiRedaction = () => {
-    let text = rawPiiText;
-    let count = 0;
-
-    // Redact OTP (6 digits)
-    const otpRegex = /\b\d{6}\b/g;
-    if (otpRegex.test(text)) {
-      text = text.replace(otpRegex, '██████ (MÃ OTP ĐÃ ĐÈ)');
-      count++;
-    }
-
-    // Redact Phone numbers (Vietnamese format 10 digits)
-    const phoneRegex = /\b(0[35789]\d{8})\b/g;
-    if (phoneRegex.test(text)) {
-      text = text.replace(phoneRegex, '██████████ (SĐT ĐÃ ĐÈ)');
-      count++;
-    }
-
-    // Redact Bank account / Credit card numbers (8 to 16 digits)
-    const cardRegex = /\b\d{8,16}\b/g;
-    if (cardRegex.test(text)) {
-      text = text.replace(cardRegex, '████████████ (STK/THẺ ĐÃ ĐÈ)');
-      count++;
-    }
-
-    // Redact email addresses
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
-    if (emailRegex.test(text)) {
-      text = text.replace(emailRegex, '██████████@████.com (EMAIL ĐÃ ĐÈ)');
-      count++;
-    }
-
-    // Redact Vietnamese names (2-4 capitalized words)
-    const nameRegex = /\b[A-ZĐ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]+\s+[A-ZĐ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]+(?:\s+[A-ZĐ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]+){1,2}\b/g;
-    if (nameRegex.test(text)) {
-      text = text.replace(nameRegex, '████████ (HỌ TÊN ĐÃ ĐÈ)');
-      count++;
-    }
-
-    setRedactedPiiText(text);
-    setPiiRedactedCount(count);
-  };
-
-  // Handle local PII image redaction simulation
-  const handlePiiImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      // In a real device we'd run OCR. Here we mock it by overlaying redaction blocks on a canvas.
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-
-          // Draw dark censoring boxes to simulate on-device OCR redaction
-          ctx.fillStyle = '#0f172a'; // slate 900
-          
-          // Mimic some standard locations for sensitive details on screenshot (top/center)
-          ctx.fillRect(img.width * 0.15, img.height * 0.2, img.width * 0.7, img.height * 0.08); // Account Number box
-          ctx.fillRect(img.width * 0.15, img.height * 0.35, img.width * 0.5, img.height * 0.05); // Balance box
-          ctx.fillRect(img.width * 0.3, img.height * 0.75, img.width * 0.4, img.height * 0.06); // Owner Name box
-
-          // Add secure stamp
-          ctx.fillStyle = '#10b981'; // emerald 500
-          ctx.font = `bold ${Math.max(14, Math.floor(img.width * 0.03))}px monospace`;
-          ctx.fillText('SCAMGUARD PRIVACY PROTECTED', img.width * 0.1, img.height * 0.95);
-
-          setRedactedPiiImageBase64(canvas.toDataURL('image/png'));
-        }
-      };
-      img.src = base64;
-    };
-    reader.readAsDataURL(file);
-  };
+  const total = masked ? Object.values<number>(masked.counts).reduce((a, b) => a + b, 0) : 0;
 
   return (
     <div className="space-y-4 bg-slate-950/40 p-5 rounded-2xl border border-slate-800/80">
       <div className="space-y-1">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
           <EyeOff className="w-4 h-4 text-cyan-400" />
-          <span>Privacy-Preserving On-Device PII Redactor:</span>
+          <span>Che thông tin cá nhân trên trình duyệt:</span>
         </label>
         <p className="text-xs text-slate-400">
-          Tự động nhận diện và che đè đen (PII Blackout) Họ tên, CCCD, Số tài khoản, Số dư ngân hàng và Mã OTP trực tiếp bằng mô hình cục bộ trên trình duyệt trước khi chia sẻ dữ liệu hoặc gửi lên AI Cloud.
+          Che số điện thoại, email, số tài khoản, số thẻ, mã OTP, mật khẩu trong đoạn chữ ngay trên máy bạn (không gửi lên máy chủ), để bạn chép đi chia sẻ an toàn hơn. Dùng cùng quy tắc với bộ che của máy chủ ScamGuard.
         </p>
       </div>
 
-      {/* Text Redaction Box */}
+      {/* Che chữ */}
       <div className="space-y-2">
-        <p className="text-xs font-bold text-slate-400 font-mono">1. CHE ĐEN PII TRONG VĂN BẢN / TIN NHẮN CHAT:</p>
+        <p className="text-xs font-bold text-slate-400 font-mono">1. CHE THÔNG TIN TRONG ĐOẠN CHỮ / TIN NHẮN:</p>
         <textarea
           rows={3}
           value={rawPiiText}
@@ -111,69 +65,53 @@ export const PiiRedactTab: React.FC = () => {
           className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-sans leading-relaxed"
         />
         <button
-          onClick={handleApplyPiiRedaction}
-          className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center space-x-2 font-mono"
+          onClick={() => setMasked(maskSensitiveText(rawPiiText))}
+          disabled={!rawPiiText.trim()}
+          className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center space-x-2 font-mono disabled:opacity-40"
         >
           <Shield className="w-4 h-4" />
-          <span>CHẠY MÔ HÌNH CHE ĐEN PII VĂN BẢN</span>
+          <span>CHE THÔNG TIN NHẠY CẢM</span>
         </button>
+        <p className="text-[11px] text-slate-500 leading-relaxed">
+          Chưa che được: họ tên, địa chỉ, số dư; mã OTP đứng một mình không có chữ "OTP" hay "mã xác thực"; số tài khoản ngắn không có chữ "STK" đứng trước. Hãy đọc lại trước khi chia sẻ.
+        </p>
       </div>
 
-      {/* Image Screenshot Redaction Box */}
-      <div className="space-y-2 pt-3 border-t border-slate-800/60">
-        <p className="text-xs font-bold text-slate-400 font-mono">2. CHE ĐEN PII TRÊN ẢNH CHỤP MÀN HÌNH (BILL CHUYỂN TIỀN):</p>
-        <div className="p-4 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/40 text-center hover:border-cyan-500/40 transition-all">
-          <label className="cursor-pointer block space-y-1.5">
-            <Upload className="w-6 h-6 text-cyan-400 mx-auto" />
-            <span className="text-xs text-slate-300 font-bold block">Tải ảnh chụp màn hình chứa PII</span>
-            <span className="text-[10px] text-slate-500 block">Kéo thả ảnh biên lai giao dịch cần xóa thông tin nhạy cảm</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                if (e.target.files?.[0]) handlePiiImageUpload(e.target.files[0]);
-              }}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        {redactedPiiImageBase64 && (
-          <div className="p-3 bg-slate-900/60 rounded-2xl border border-emerald-500/30 space-y-2">
-            <p className="text-xs font-bold text-emerald-400 flex items-center space-x-1 font-mono">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Kết quả che đen PII trên ảnh (On-Device OCR Censoring):</span>
-            </p>
-            <img
-              src={redactedPiiImageBase64}
-              alt="Redacted Screenshot"
-              className="w-full rounded-xl border border-slate-800 max-h-52 object-contain bg-black mx-auto shadow-inner"
-            />
-            <a
-              href={redactedPiiImageBase64}
-              download="scamguard_redacted_pii.png"
-              className="inline-block w-full py-2.5 text-center rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition-all font-mono"
-            >
-              TẢI ẢNH ĐÃ CHE ĐEN PII VỀ MÁY
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Render text output */}
-      {redactedPiiText && (
+      {masked && (
         <div className="p-4 bg-slate-900/60 rounded-2xl border border-emerald-500/30 space-y-2">
-          <div className="flex items-center justify-between font-mono text-xs">
+          <div className="font-mono text-xs">
             <span className="text-emerald-400 font-bold flex items-center space-x-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Đã bảo mật {piiRedactedCount} trường dữ liệu nhạy cảm:</span>
+              <span>
+                {total > 0
+                  ? `Đã che ${total} mục: ${Object.entries(masked.counts).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(', ')}`
+                  : 'Không tìm thấy thông tin cần che theo các quy tắc trên.'}
+              </span>
             </span>
           </div>
-          <div className="p-3 bg-slate-950 rounded-xl text-xs text-slate-300 font-mono leading-relaxed border border-slate-800">
-            {redactedPiiText}
+          <div className="p-3 bg-slate-950 rounded-xl text-xs text-slate-300 font-mono leading-relaxed border border-slate-800 whitespace-pre-wrap">
+            {masked.text}
           </div>
         </div>
       )}
+
+      {/* Ảnh: chưa che tự động được */}
+      <div className="space-y-2 pt-3 border-t border-slate-800/60">
+        <p className="text-xs font-bold text-slate-400 font-mono">2. CHE THÔNG TIN TRÊN ẢNH CHỤP MÀN HÌNH:</p>
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800 text-xs text-slate-300 space-y-2 leading-relaxed">
+          <p className="flex items-center space-x-1.5 font-bold text-amber-400">
+            <ImageOff className="w-4 h-4" />
+            <span>ScamGuard chưa che tự động được chữ trong ảnh (cần công nghệ đọc chữ trong ảnh – OCR).</span>
+          </p>
+          <p>Trước khi gửi ảnh biên lai, ảnh tin nhắn cho người khác, hãy tự che bằng công cụ chỉnh ảnh có sẵn trên điện thoại (bút vẽ, cắt ảnh):</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Số tài khoản, số thẻ, số dư</li>
+            <li>Họ tên, số điện thoại, mã giao dịch</li>
+            <li>Mã OTP, mã QR cá nhân</li>
+          </ul>
+          <p className="text-slate-400">Nên tô kín bằng màu đặc; không dùng hiệu ứng làm mờ vì có thể khôi phục được.</p>
+        </div>
+      </div>
     </div>
   );
 };

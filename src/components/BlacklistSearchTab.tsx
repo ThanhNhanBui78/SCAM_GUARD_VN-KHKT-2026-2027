@@ -175,6 +175,9 @@ export const BlacklistSearchTab: React.FC = () => {
             <p className="text-xs font-black text-white font-mono uppercase tracking-wider text-slate-300">
               Báo Cáo SĐT / STK Lừa Đảo Cho Cộng Đồng:
             </p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Báo cáo lưu tạm trên máy chủ ScamGuard (có thể mất khi máy chủ khởi động lại), chưa ai xác minh. Chỉ báo cáo khi bạn chắc chắn; nếu đã bị lừa, hãy trình báo công an.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <select
                 value={reportType}
@@ -220,7 +223,7 @@ export const BlacklistSearchTab: React.FC = () => {
               type="submit"
               className="w-full py-2.5 rounded-xl bg-rose-600 text-white font-black text-xs hover:bg-rose-500 cursor-pointer font-mono shadow-md shadow-rose-950"
             >
-              GỬI BÁO CÁO XÁC MINH PHÁP Y
+              GỬI BÁO CÁO (CHƯA XÁC MINH)
             </button>
             {reportSuccessMsg && (
               <p className="text-xs text-emerald-400 font-bold leading-relaxed">{reportSuccessMsg}</p>

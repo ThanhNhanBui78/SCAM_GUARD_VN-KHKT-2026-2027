@@ -727,6 +727,7 @@ export async function inspectFakeBillAnomalies(params: {
   mimeType?: string;
   declaredBank?: string;
   declaredAmount?: string;
+  context?: string;
 }): Promise<FakeBillAnomalyReport> {
   const mime = params.mimeType || 'image/png';
   const base64Data = params.base64Image.replace(/^data:image\/\w+;base64,/, '');
@@ -741,10 +742,13 @@ export async function inspectFakeBillAnomalies(params: {
   let metadataStatus: FakeBillAnomalyReport['structuralMetrics']['metadataTemporalConsistency'] = 'LOGICAL';
 
   const suspiciousRegions: FakeBillAnomalyReport['explainableSuspiciousRegions'] = [];
+  // Ghi chú ngữ cảnh do người dùng gõ: che thông tin cá nhân và chặn chèn lệnh trước khi đưa cho AI
+  const billContext = typeof params.context === 'string' && params.context.trim() ? defendPromptInjection(sanitizeAndRedactPII(params.context.slice(0, 2000)).text).replace(/"/g, "'") : '';
 
   try {
     const prompt = `Bạn là Chuyên gia Giám Định Pháp Y Tài Liệu & Hóa Đơn Chuyển Khoản Ngân Hàng SCAMGUARD.
 Hãy phân tích bức ảnh biên lai chuyển tiền / sao kê ngân hàng này dưới góc độ quang học và cấu trúc pháp y:
+${billContext ? `\nNgữ cảnh người dùng cung cấp (đã che thông tin cá nhân): "${billContext}". Đối chiếu ngữ cảnh này với nội dung ảnh (ngân hàng, số tiền, thời gian) nếu liên quan.\n` : ''}
 
 QUY TẮC BẮT BUỘC:
 1. KHÔNG khẳng định 100% hóa đơn là thật hay giả (không có thẩm quyền pháp lý tuyệt đối).

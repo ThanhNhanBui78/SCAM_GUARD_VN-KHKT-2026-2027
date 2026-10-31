@@ -374,88 +374,6 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
     }
   };
 
-  // Local deterministic fallback analyzer when AI server is unreachable or rate limited
-  const runOfflineOpticalForensics = () => {
-    setError(null);
-    const mockReport: AnalysisResult = {
-      riskScore: 78,
-      riskLevel: 'HIGH',
-      summary: 'Giám định quang học ngoại tuyến: Phát hiện dấu hiệu chỉnh sửa phông chữ và độ lệch pixel tại trường số tiền giao dịch 50.000.000đ. Viền số tiền có độ nét không khớp với toàn bộ phôi biên lai ngân hàng.',
-      signals: [
-        {
-          name: 'Độ lệch phông chữ & Kerning',
-          scoreContribution: 80,
-          description: 'Khoảng cách ký tự và font chữ vùng số tiền không thuộc bộ phông chuẩn của hệ thống Mobile Banking.',
-          category: 'Impersonation',
-        },
-        {
-          name: 'Nhiễu nén ảnh (JPEG Compression Artifacts)',
-          scoreContribution: 75,
-          description: 'Phát hiện quầng mờ cục bộ quanh số tiền do chèn chữ đè lên ảnh nền biên lai có sẵn.',
-          category: 'Impersonation',
-        },
-        {
-          name: 'Áp lực tâm lý thúc giục',
-          scoreContribution: 65,
-          description: 'Chiêu bài giục giao hàng nhanh khi bên nhận chưa thấy biến động số dư thực tế.',
-          category: 'Urgency',
-        },
-      ],
-      redFlags: [
-        'Vùng số tiền có dấu hiệu ghép đè đồ họa hoặc tạo từ website fake bill trực tuyến',
-        'Tài khoản ngân hàng của bên thụ hưởng chưa nhận được tiền thực tế',
-        'Đối phương dồn ép thời gian đòi chuyển hàng hoặc hoàn trả tiền thừa',
-      ],
-      recommendedSteps: [
-        'TUYỆT ĐỐI KHÔNG giao hàng, gửi mã thẻ hoặc chuyển tiền hoàn lại khi chưa thấy tiền vào tài khoản.',
-        'Mở trực tiếp ứng dụng Mobile Banking của bạn để kiểm tra lịch sử biến động số dư chính thức.',
-        'Yêu cầu người mua đợi ngân hàng hạch toán xong rồi mới bàn giao tài sản.',
-      ],
-      piiRedacted: false,
-      threatBreakdown: {
-        maliciousUrl: 0,
-        impersonation: 85,
-        urgency: 75,
-        credentialHarvesting: 20,
-        socialEngineering: 78,
-      },
-      evidenceFound: [
-        {
-          severity: 'high',
-          title: 'Vùng chữ số tiền giao dịch',
-          description: 'Phông chữ có độ phân giải và mật độ pixel không đồng nhất với phần còn lại của hóa đơn.',
-        },
-        {
-          severity: 'medium',
-          title: 'Con dấu và bố cục ngân hàng',
-          description: 'Cần đối chiếu mẫu phôi gốc của ngân hàng liên quan.',
-        },
-      ],
-      threatClassification: {
-        primaryThreat: 'Biên Lai Chuyển Tiền Giả Mạo (Fake Bank Receipt)',
-        attackVector: 'Chỉnh sửa đồ họa biên lai (Visual Manipulation)',
-        target: 'Hàng hóa / Tiền cọc của người bán',
-        potentialImpact: ['Mất hàng hóa mà không nhận được tiền', 'Bị lừa chuyển khoản ngược'],
-        confidence: 88,
-      },
-      attackChain: [
-        'Đối tượng vờ đặt mua hàng hoặc trả nợ',
-        'Tạo ảnh biên lai chuyển tiền thành công giả bằng công cụ đồ họa',
-        'Gửi ảnh thúc giục nạn nhân giao hàng hoặc hoàn trả tiền thừa',
-      ],
-      assessmentId: `SG-OFFLINE-${Date.now().toString(16).toUpperCase()}`,
-      detectedTactics: ['Urgency', 'Authority', 'Fear'],
-      explanationsByPersona: {
-        child: 'Đây là biên lai giả mạo của kẻ xấu. Đừng tin và hãy hỏi người lớn nhé.',
-        teen: 'Ảnh biên lai ngân hàng giả mạo phông chữ. Kiểm tra biến động số dư tài khoản thật trước khi giao dịch.',
-        adult: 'Phát hiện can thiệp quang học trên biên lai chuyển tiền. Tuyệt đối không giao hàng khi chưa nhận được tiền trong tài khoản.',
-        senior: 'Biên lai giả tạo từ máy tính. Nhờ người nhà mở app ngân hàng kiểm tra số dư thực tế.',
-        expert: 'Typography kerning and compression artifact discrepancy on declared bank receipt transaction area.',
-      },
-    };
-    setResult(mockReport);
-  };
-
   const handleAnalyzeFakeBill = async () => {
     if (!fakeBillBase64) return;
 
@@ -476,16 +394,16 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
 
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok || !contentType.includes('application/json')) {
-        console.warn('Fakebill API error, engaging optical forensics engine.');
-        runOfflineOpticalForensics();
+        console.warn('Fakebill API error.');
+        setError('Không kết nối được máy chủ ScamGuard nên chưa giám định được ảnh. Hãy thử lại sau. Cách chắc chắn nhất: mở app ngân hàng của bạn xem tiền đã thật sự vào tài khoản chưa.');
         return;
       }
 
       const data = await res.json();
       setResult(data);
     } catch (err: any) {
-      console.warn('Fake bill network error, engaging optical forensics engine:', err);
-      runOfflineOpticalForensics();
+      console.warn('Fake bill network error:', err);
+      setError('Không kết nối được máy chủ ScamGuard nên chưa giám định được ảnh. Hãy thử lại sau. Cách chắc chắn nhất: mở app ngân hàng của bạn xem tiền đã thật sự vào tài khoản chưa.');
     } finally {
       setLoading(false);
     }
@@ -860,7 +778,7 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                     🧾 BILL & BANK FORENSICS (GIÁM ĐỊNH HÓA ĐƠN & GIAO DIỆN)
                   </h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Tải lên ảnh chụp màn hình hóa đơn chuyển tiền đáng ngờ. Hệ thống sẽ bóc tách phông chữ, khoảng cách ký tự (kerning), logo và kiểm tra dấu vết làm giả watermark để cảnh báo.
+                    Tải lên ảnh chụp màn hình biên lai chuyển tiền đáng ngờ. Trên bản có AI (Gemini), AI xem ảnh và nhận xét điểm bất thường về phông chữ, căn lề, logo, số liệu giao dịch, có đối chiếu với ghi chú ngữ cảnh. Bản không có AI chưa giám định được ảnh. Kết quả chỉ để tham khảo: cách chắc chắn nhất là mở app ngân hàng xem tiền đã vào tài khoản chưa.
                   </p>
                 </div>
 
@@ -991,13 +909,6 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                 <div className="pt-2 border-t border-rose-500/20 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={runOfflineOpticalForensics}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-mono text-[11px] transition cursor-pointer"
-                  >
-                    ⚡ CHẠY GIÁM ĐỊNH NGOẠI TUYẾN (OFFLINE OPTICAL)
-                  </button>
-                  <button
-                    type="button"
                     onClick={handleAnalyzeFakeBill}
                     className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold font-mono text-[11px] transition cursor-pointer"
                   >
@@ -1026,10 +937,12 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
               </div>
               <div>
                 <h4 className="text-xs font-black uppercase text-white font-mono">
-                  GIÁM ĐỊNH THÀNH PHẦN HOẠT ĐỘNG KHÁCH QUAN
+                  DỮ LIỆU CỦA BẠN Ở TAB NÀY
                 </h4>
                 <p className="text-xs text-slate-400 leading-relaxed mt-1">
-                  Mọi yêu cầu xử lý dữ liệu của bạn trên hai tab này được bảo vệ tuyệt đối và không kết nối dữ liệu thô với các AI bên ngoài. Hệ thống lưu trữ bảo mật cục bộ của ScamGuard giúp ngăn ngừa rò rỉ dữ liệu nhạy cảm ra môi trường Internet công cộng.
+                  {activeTab === 'pii_redact'
+                    ? 'Việc che thông tin chạy ngay trên trình duyệt của bạn, không gửi lên máy chủ hay AI.'
+                    : 'Số bạn tra cứu hoặc báo cáo được gửi lên máy chủ ScamGuard, không gửi cho AI. Báo cáo chưa được xác minh và chỉ lưu tạm: có thể mất khi máy chủ khởi động lại.'}
                 </p>
               </div>
             </div>
