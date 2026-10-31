@@ -355,13 +355,16 @@ export function enforceSafetyAndCalibration(result: Partial<AnalysisResult>): {
 }
 
 export async function analyzeScamContent(req: RawAnalysisRequest): Promise<AnalysisResult> {
-  // LAYER 1: PII Redaction & Prompt Injection Defense
-  const rawInput = (req.text || '') + (req.url ? ` URL: ${req.url}` : '') + (req.sender ? ` Sender: ${req.sender}` : '');
-  const { text: sanitizedText, piiRedacted } = sanitizeAndRedactPII(rawInput);
-  const cleanInput = defendPromptInjection(sanitizedText);
-  // Email người gửi bị che ở bước trên, nên phân tích tên miền từ bản gốc trước khi che
+  // Phân tích người gửi từ bản gốc trước khi che (email bị che thì mất tên miền)
   const senderEmail = req.sender ? analyzeSenderEmail(req.sender, req.text || '') : undefined;
   const senderPhone = req.sender && !senderEmail ? analyzeSenderPhone(req.sender, req.text || '') : undefined;
+  // Email và số người gửi không gửi nguyên văn cho AI (bộ che bỏ sót số viết có dấu cách); AI chỉ nhận tên miền hoặc loại số
+  const senderForAi = senderEmail || (senderPhone && senderPhone.kind !== 'BRANDNAME') ? '' : req.sender || '';
+
+  // LAYER 1: PII Redaction & Prompt Injection Defense
+  const rawInput = (req.text || '') + (req.url ? ` URL: ${req.url}` : '') + (senderForAi ? ` Sender: ${senderForAi}` : '');
+  const { text: sanitizedText, piiRedacted } = sanitizeAndRedactPII(rawInput);
+  const cleanInput = defendPromptInjection(sanitizedText);
   const senderOnly = !(req.text || '').trim() && !(req.url || '').trim() && !!(req.sender || '').trim();
 
   const randomHex = Math.floor(100000 + Math.random() * 900000).toString(16).toUpperCase();
@@ -609,7 +612,7 @@ heuristicScore = Math.min(99, heuristicScore);
 Hãy phân tích nội dung sau theo quy trình khoa học:
 "${cleanInput}"
 ${senderEmail ? `Thông tin người gửi (đã che phần tên trước @): email gửi từ tên miền "${senderEmail.domain}"${senderEmail.isFreeMail ? ' (hộp thư miễn phí)' : ''}. Hãy xét tên miền này có khớp với tổ chức mà nội dung tự xưng hay không.` : ''}
-${senderPhone ? `Thông tin người gửi (đã che số): ${senderPhone.label}. Hãy xét loại số này có khớp với tổ chức mà nội dung tự xưng hay không; không kết luận số này là lừa đảo chỉ vì loại số.` : ''}
+${senderPhone ? `Thông tin người gửi (không gửi kèm số): ${senderPhone.label}. Hãy xét loại số này có khớp với tổ chức mà nội dung tự xưng hay không; không kết luận số này là lừa đảo chỉ vì loại số.` : ''}
 ${senderOnly ? 'Người dùng CHỈ cung cấp thông tin người gửi, không có nội dung tin. Chỉ đánh giá dựa trên người gửi, không suy diễn nội dung.' : ''}
 
 ${req.base64Image ? 'Đã đính kèm ảnh chụp màn hình để giám định pháp y thị giác.' : ''}

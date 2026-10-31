@@ -111,7 +111,7 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
   const [urlInput, setUrlInput] = useState('');
   const [senderInput, setSenderInput] = useState('');
   const [channel, setChannel] = useState<CommunicationChannel>('sms');
-  const [noSensitiveChecked, setNoSensitiveChecked] = useState(true);
+  const [showPrivacyDetail, setShowPrivacyDetail] = useState(false);
 
   // Input states for Tab 2 (Fake Bill Screenshot)
   const [fakeBillBase64, setFakeBillBase64] = useState<string | null>(null);
@@ -753,52 +753,62 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                     </div>
                   ))}
 
-                  {/* Checkbox */}
-                  <div className="flex items-start space-x-2 bg-slate-900/30 p-3 rounded-xl border border-slate-800/40 text-xs text-slate-400">
-                    <input
-                      type="checkbox"
-                      id="data-protect-verify"
-                      checked={noSensitiveChecked}
-                      onChange={(e) => setNoSensitiveChecked(e.target.checked)}
-                      className="mt-0.5 accent-cyan-500 cursor-pointer h-4 w-4"
-                    />
-                    <label htmlFor="data-protect-verify" className="cursor-pointer leading-snug">
-                      Tôi cam kết đã xóa mật khẩu, mã OTP thực và thông tin giao dịch thật trước khi bấm kiểm tra nhằm bảo vệ quyền riêng tư cá nhân.
-                    </label>
-                  </div>
-
-                  {/* 🔐 PRIVACY SENTINEL STATUS CARD */}
-                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-2.5 font-mono text-xs">
-                    <div className="flex items-center justify-between">
+                  {/* Bảo vệ thông tin cá nhân: mô tả đúng việc máy chủ làm (server/safety.ts), không dẫn sang tab khác */}
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between font-mono">
                       <div className="flex items-center space-x-1.5 text-emerald-400 font-extrabold text-[11px]">
                         <Lock className="w-3.5 h-3.5" />
-                        <span>🔐 PRIVACY SENTINEL SHIELD</span>
+                        <span>BẢO VỆ THÔNG TIN CÁ NHÂN</span>
                       </div>
                       <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 font-black">
-                        ON-DEVICE ACTIVE
+                        CHE TRÊN MÁY CHỦ
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500">
-                      <div>• Số điện thoại: <span className="text-slate-300">████████</span></div>
-                      <div>• Số tài khoản: <span className="text-slate-300">████████</span></div>
-                      <div>• Địa chỉ Email: <span className="text-slate-300">████████</span></div>
-                      <div>• Mã bảo mật OTP: <span className="text-slate-300">████████</span></div>
-                    </div>
+                    <p className="text-slate-400 leading-relaxed">
+                      Trước khi chấm điểm và gửi AI, máy chủ ScamGuard tự che các thông tin nhạy cảm nhận ra được. Nội dung tin không được lưu lại sau khi giám định. Bạn vẫn nên tự xóa mật khẩu, mã OTP và thông tin giao dịch thật trước khi dán.
+                    </p>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-[10px]">
-                      <span className="text-emerald-400 font-black">✓ 4 sensitive entities masked</span>
+                    {result?.analysisEngine && (
+                      <p className="text-[11px] font-mono text-emerald-400">
+                        {result.piiRedacted ? '✓ Tin vừa giám định: đã che thông tin nhạy cảm trước khi phân tích' : 'Tin vừa giám định: không thấy thông tin cần che'}
+                      </p>
+                    )}
+
+                    <div className="pt-1 border-t border-slate-900 text-[10px] font-mono text-right">
                       <button
                         type="button"
-                        onClick={() => {
-                          setActiveTab('pii_redact');
-                          setResult(null);
-                        }}
-                        className="text-cyan-400 hover:text-cyan-300 font-extrabold hover:underline cursor-pointer flex items-center"
+                        onClick={() => setShowPrivacyDetail((v) => !v)}
+                        className="text-cyan-400 hover:text-cyan-300 font-extrabold hover:underline cursor-pointer"
                       >
-                        Xem chi tiết bảo mật →
+                        {showPrivacyDetail ? 'Thu gọn ↑' : 'Xem chi tiết bảo mật ↓'}
                       </button>
                     </div>
+
+                    {showPrivacyDetail && (
+                      <div className="space-y-2 text-[11px] text-slate-400 leading-relaxed">
+                        <div>
+                          <p className="font-bold text-slate-300">Máy chủ tự che:</p>
+                          <ul className="list-disc pl-5">
+                            <li>Số điện thoại, kể cả viết có dấu cách, dấu chấm, +84 hoặc số nước ngoài</li>
+                            <li>Địa chỉ email</li>
+                            <li>Mã OTP, mã xác thực khi có chữ "OTP", "mã xác thực", "mã xác nhận" ở gần</li>
+                            <li>Mật khẩu viết sau chữ "mật khẩu" hoặc "password"</li>
+                            <li>Số tài khoản viết sau chữ "STK", "số tài khoản"; dãy số dài 13–19 chữ số (số thẻ)</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-300">Có thể bỏ sót:</p>
+                          <ul className="list-disc pl-5">
+                            <li>Mã OTP đứng một mình, không có chữ OTP hay mã xác thực</li>
+                            <li>Số tài khoản ngắn không có chữ "STK", "số tài khoản" đứng trước</li>
+                            <li>Thông tin viết bằng chữ (ví dụ "không chín tám bảy…") hoặc tên, địa chỉ</li>
+                          </ul>
+                        </div>
+                        <p>Email và số người gửi chỉ dùng để xét tên miền và loại số; AI không nhận địa chỉ email hay số điện thoại đầy đủ.</p>
+                        <p>Ảnh chụp màn hình được gửi nguyên lên máy chủ để phân tích (chưa che được chữ trong ảnh), không lưu lại.</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
