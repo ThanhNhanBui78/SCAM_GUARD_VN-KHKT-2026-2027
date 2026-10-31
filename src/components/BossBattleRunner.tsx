@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Shield,
@@ -16,6 +16,7 @@ import {
 import { BossBattle } from '../data/campaignData';
 import { playSuccessChime, playAlertWarning, playChestFanfare } from '../utils/audioEffects';
 import confetti from 'canvas-confetti';
+import { shuffled } from '../utils/shuffle';
 
 interface BossBattleRunnerProps {
   boss: BossBattle;
@@ -41,6 +42,8 @@ export const BossBattleRunner: React.FC<BossBattleRunnerProps> = ({
   if (!isOpen) return null;
 
   const currentPhase = boss.phases[currentPhaseIndex];
+  // Xáo phương án mỗi pha (dữ liệu luôn đặt đáp án đúng ở ô đầu tiên)
+  const phaseOptions = useMemo(() => shuffled(currentPhase?.options ?? []), [currentPhase]);
   const isLastPhase = currentPhaseIndex >= boss.phases.length - 1;
 
   const handleStartFight = () => {
@@ -270,7 +273,7 @@ export const BossBattleRunner: React.FC<BossBattleRunnerProps> = ({
                   Chọn Tuyệt Kỹ Phản Đòn Của Vệ Binh:
                 </span>
                 <div className="grid grid-cols-1 gap-3">
-                  {currentPhase.options.map((opt) => {
+                  {phaseOptions.map((opt) => {
                     const isSelected = selectedOptionId === opt.id;
                     let style = 'bg-slate-950/80 border-slate-800 text-slate-200 hover:border-cyan-500/60';
 

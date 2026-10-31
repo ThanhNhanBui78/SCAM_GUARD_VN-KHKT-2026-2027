@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Shield,
@@ -32,6 +32,7 @@ import {
   SequenceStepItem,
 } from '../data/duolingoLessons';
 import { generateAdaptiveReplacementQuestion } from '../data/adaptiveQuestionEngine';
+import { shuffled } from '../utils/shuffle';
 
 interface DuolingoLessonRunnerProps {
   lesson: DuolingoLesson;
@@ -110,6 +111,8 @@ export const DuolingoLessonRunner: React.FC<DuolingoLessonRunnerProps> = ({
   };
 
   const currentQuestion: PracticeQuestion | undefined = practiceQueue[practiceIndex];
+  // Xáo phương án mỗi khi sang câu mới để đáp án đúng không luôn ở cùng vị trí
+  const mcOptions = useMemo(() => shuffled(currentQuestion?.options ?? []), [currentQuestion]);
 
   // Initialize matching items with right column randomized
   useEffect(() => {
@@ -764,7 +767,7 @@ export const DuolingoLessonRunner: React.FC<DuolingoLessonRunnerProps> = ({
                   {/* 1. TYPE: MULTIPLE CHOICE */}
                   {currentQuestion.type === 'multiple_choice' && (
                     <div className="space-y-3 pt-1">
-                      {currentQuestion.options?.map((opt, idx) => {
+                      {mcOptions.map((opt, idx) => {
                         const isSelected = selectedMcOption === opt.id;
                         const isChecked = lastQuestionResult?.isChecked;
                         let cardStyle = 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-200';

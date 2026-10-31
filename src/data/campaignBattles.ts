@@ -347,10 +347,10 @@ export const BOSS_BATTLES: Record<string, BossBattle> = {
         options: [
           {
             id: 'b42-opt-1',
-            label: 'Yêu cầu Video Call trực tiếp, nếu từ chối hoặc dùng Deepfake đơ mắt thì cắt đứt liên lạc ngay',
+            label: 'Không nạp tiền, cắt liên lạc và báo cáo tài khoản: người quen qua mạng rủ nạp tiền vào sàn là chiêu "mổ heo"',
             isCorrect: true,
             damageToBoss: 35,
-            feedback: 'Rất thông thái! Bọn lừa đảo không bao giờ dám video call trực tiếp rõ mặt.',
+            feedback: 'Rất thông thái! Đừng dựa vào video call để tin: kẻ gian có thể dùng deepfake. Cứ ai rủ nạp tiền đầu tư qua mạng là dừng lại.',
           },
           {
             id: 'b42-opt-2',
@@ -1153,7 +1153,7 @@ export const BOSS_BATTLES: Record<string, BossBattle> = {
         incomingEvidence: {
           type: 'sms',
           sender: 'HỆ THỐNG PHÁNG ĐIỆN TỐI CAO',
-          content: 'Tuyên thệ nguyên tắc phòng thủ thép ViSEF 2026.',
+          content: 'Tuyên thệ nguyên tắc phòng thủ thép của Vệ Binh ScamGuard.',
         },
         options: [
           {
@@ -1600,7 +1600,7 @@ export const SPEED_REFLEX_GAMES: Record<string, SpeedReflexChallenge> = {
         header: 'Cán bộ Thuế hướng dẫn hoàn thuế',
         content: 'Cán bộ Thuế gửi link Zalo bảo cài app Thue-Dien-Tu.apk để nhận 5 triệu hoàn thuế.',
         isScam: true,
-        explanation: 'Mã độc giả mạo Tổng cục Thuế chiếm đoạt điện thoại.',
+        explanation: 'Mã độc giả mạo cơ quan thuế chiếm đoạt điện thoại.',
       },
       {
         id: 'rf8-7',
@@ -1608,7 +1608,7 @@ export const SPEED_REFLEX_GAMES: Record<string, SpeedReflexChallenge> = {
         header: 'Trang Cổng Dịch Vụ Công Thuế',
         content: 'https://canhan.gdt.gov.vn',
         isScam: false,
-        explanation: 'Cổng thông tin điện tử chính thức dành cho cá nhân của Tổng Cục Thuế.',
+        explanation: 'Cổng thông tin điện tử chính thức dành cho cá nhân của ngành thuế (Cục Thuế).',
       },
     ],
   },
@@ -1928,7 +1928,7 @@ export const SUPPLY_CHESTS: Record<string, SupplyChest> = {
     sectorId: 'sector-12',
     chestName: 'Rương Thánh Điện Công Lý & Pháp Lý Tối Cao',
     xpReward: 500,
-    artifactName: 'Vương Miện Đại Hiệp Sĩ ViSEF Toàn Năng',
+    artifactName: 'Vương Miện Đại Hiệp Sĩ ScamGuard Toàn Năng',
     artifactDescription: 'Chứng nhận cảnh giới phòng thủ cao nhất: Bậc Thầy Miễn Nhiễm Mọi Chiêu Trò Lừa Đảo Số!',
     artifactIcon: '👑',
   },

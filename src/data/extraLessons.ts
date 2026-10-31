@@ -915,7 +915,7 @@ export const EXTRA_LESSONS: DuolingoLesson[] = [
     "number": 18,
     "title": "Bẫy Cán bộ Thuế / Điện lực dọa phạt & ép cài file APK",
     "shortDesc": "Giả danh cơ quan Thuế hỗ trợ hoàn thuế thu nhập và bẫy chiếm quyền Accessibility Android.",
-    "targetGoal": "Nhận diện bẫy ép cài app Dịch vụ công / Tổng cục Thuế giả mạo và hiểu rõ cơ chế cấp quyền Trợ năng độc hại.",
+    "targetGoal": "Nhận diện bẫy ép cài app Dịch vụ công / cơ quan thuế giả mạo và hiểu rõ cơ chế cấp quyền Trợ năng độc hại.",
     "xpReward": 75,
     "shieldBadgeName": "Huy Hiệu Kháng Mã Độc APK",
     "shieldBadgeIcon": "🛡️",
@@ -924,7 +924,7 @@ export const EXTRA_LESSONS: DuolingoLesson[] = [
       "summary": "Kẻ gian giả danh Cán bộ Thuế hướng dẫn cài đặt app \"Tổng Cục Thuế\" hoặc \"Dịch vụ công\" đuôi .apk. Sau khi cài, ứng dụng yêu cầu cấp quyền \"Trợ năng\" (Accessibility Service) để tự động đọc mã OTP và điều khiển màn hình từ xa.",
       "keyPoints": [
         "📱 Quyền Trợ năng (Accessibility) cực kỳ nguy hiểm: Cho phép kẻ lừa đảo nhìn thấy mọi thao tác gõ phím, tự động mở app ngân hàng và chuyển tiền mà bạn không hề hay biết.",
-        "🏛️ Tổng cục Thuế KHÔNG BAO GIỜ gửi link cài app qua Zalo hay tin nhắn: Mọi ứng dụng chính thức đều có mặt trên Google Play Store và Apple App Store.",
+        "🏛️ Cơ quan thuế KHÔNG BAO GIỜ gửi link cài app qua Zalo hay tin nhắn: Mọi ứng dụng chính thức đều có mặt trên Google Play Store và Apple App Store.",
         "🛑 Cách xử lý nếu lỡ cài app lạ: BẬT NGAY CHẾ ĐỘ MÁY BAY (Airplane Mode) để ngắt mạng, sau đó khôi phục cài đặt gốc của điện thoại."
       ],
       "visualMockup": {
@@ -1560,7 +1560,7 @@ export const EXTRA_LESSONS: DuolingoLesson[] = [
         "prompt": "Kẻ lừa đảo sử dụng AI Deepfake có thể dễ dàng đoán ra Mật mã gia đình (Safe Word) nếu từ khóa đó chưa từng được đăng lên mạng.",
         "trueFalseAnswer": {
           "isTrue": false,
-          "explanation": "Đúng vậy! AI chỉ bắt chước được hình ảnh và giọng nói, không thể đọc được suy nghĩ hay ký ức riêng tư của gia đình bạn."
+          "explanation": "Nhận định này SAI. AI chỉ bắt chước được hình ảnh và giọng nói, không thể đọc được suy nghĩ hay ký ức riêng tư của gia đình bạn."
         }
       },
       {
@@ -4275,7 +4275,7 @@ export const EXTRA_LESSONS: DuolingoLesson[] = [
       "summary": "Các đối tượng đăng tin tuyển dụng \"Nhân viên chăm sóc khách hàng, gõ máy tính tại casino/văn phòng nước ngoài\" lương 30 - 50 triệu/tháng, bao ăn ở và vé máy bay. Khi sang đến nơi, nạn nhân bị tịch thu hộ chiếu, ép tham gia đường dây lừa đảo trực tuyến và bị đánh đập nếu không đạt chỉ tiêu.",
       "keyPoints": [
         "💼 Cờ đỏ tuyển dụng: Không yêu cầu bằng cấp, không cần kinh nghiệm, bao trọn gói chi phí xuất cảnh nhưng mức lương cao bất thường.",
-        "🛂 Thủ tục xuất khẩu lao động hợp pháp: Bắt buộc phải thông qua các doanh nghiệp được Bộ LĐ-TB&XH cấp giấy phép hoạt động dịch vụ đưa người lao động đi nước ngoài.",
+        "🛂 Thủ tục xuất khẩu lao động hợp pháp: Bắt buộc phải thông qua các doanh nghiệp được Bộ Nội vụ (trước đây là Bộ LĐ-TB&XH) cấp giấy phép hoạt động dịch vụ đưa người lao động đi nước ngoài.",
         "🛑 Không bao giờ đi xuất cảnh bằng đường mòn, lối mở hoặc visa du lịch để đi làm việc bất hợp pháp."
       ],
       "visualMockup": {
@@ -5516,7 +5516,7 @@ export const EXTRA_LESSONS: DuolingoLesson[] = [
         "options": [
           {
             "id": "a",
-            "text": "Từ chối ngay và báo cáo bài viết. Công ty hợp pháp phải có giấy phép xuất khẩu lao động của Bộ LĐTB&XH.",
+            "text": "Từ chối ngay và báo cáo bài viết. Công ty hợp pháp phải có giấy phép đưa người lao động đi làm việc ở nước ngoài của Bộ Nội vụ (trước đây là Bộ LĐ-TB&XH).",
             "isCorrect": true,
             "explanation": "Chính xác! Chỉ xuất khẩu lao động qua các doanh nghiệp có cấp phép chính thức."
           },

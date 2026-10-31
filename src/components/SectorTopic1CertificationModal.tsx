@@ -21,6 +21,7 @@ import {
 import confetti from 'canvas-confetti';
 import { getQuestionsForSector, CertificationQuestion } from '../data/certificationTopic1Questions';
 import { CAMPAIGN_SECTORS } from '../data/campaignData';
+import { shuffled } from '../utils/shuffle';
 import { PostAppCertificationRecord } from '../types';
 
 interface SectorTopic1CertificationModalProps {
@@ -40,7 +41,21 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
   preAppScore = 45,
   onCertificateIssued,
 }) => {
-  const examQuestions = useMemo(() => getQuestionsForSector(sectorNumber), [sectorNumber]);
+  // Dữ liệu đặt đáp án đúng ở B gần hết: xáo phương án và gán lại chữ cái theo vị trí mới,
+  // để chấm điểm và phần đối soát đáp án vẫn khớp
+  const examQuestions = useMemo(
+    () =>
+      getQuestionsForSector(sectorNumber).map((q) => {
+        const order = shuffled(q.options);
+        const letters = ['A', 'B', 'C', 'D'] as const;
+        return {
+          ...q,
+          options: order.map((o, i) => ({ ...o, id: letters[i] })),
+          correctAnswer: letters[order.findIndex((o) => o.id === q.correctAnswer)],
+        };
+      }),
+    [sectorNumber]
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, 'A' | 'B' | 'C' | 'D'>>({});
   const [startTime, setStartTime] = useState<number>(Date.now());
@@ -149,11 +164,12 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
       const isPassed = scorePct > 50; // Pass criteria: > 50%
       const postAppScore = Math.min(100, Math.round(50 + (correctCount / totalQuestions) * 50));
       const timeSpentSec = Math.round((Date.now() - startTime) / 1000);
-      const certCode = `VISEF-CERT-2026-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+      // Mã chứng nhận của ứng dụng (không phải văn bằng của cơ quan, cuộc thi nào)
+      const certCode = `SG-KV${sectorNumber}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
 
       // Participant info from localStorage if present
       const savedUserStr = localStorage.getItem('scamguard_auth_user');
-      let pName = 'Học viên ViSEF 2026';
+      let pName = 'Học viên ScamGuard';
       let anonCode = `HV-${Math.floor(1000 + Math.random() * 9000)}`;
       let demoGroup = 'STUDENT';
       let effectivePreScore = preAppScore;
@@ -272,14 +288,14 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
-                  ViSEF Level 1 Sát Hạch
+                  Bài kiểm tra cuối khu vực
                 </span>
                 <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-                  Chuẩn hóa nghiên cứu khoa học kỹ thuật
+                  Chứng nhận của ứng dụng ScamGuard VN
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-black text-white tracking-wide">
-                Thi Chứng Chỉ Năng Lực Phòng Thủ Số: Chủ Đề 1
+                Kiểm Tra Cuối Khu Vực {sectorNumber}: {sectorTitle}
               </h2>
             </div>
           </div>
@@ -305,7 +321,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                 Đã trả lời: <strong className="text-cyan-400">{answeredCount}</strong>/{totalQuestions}
               </span>
               <span className="text-slate-500">•</span>
-              <span className="text-emerald-400 font-semibold">Tiêu chuẩn qua: &gt; 50% (≥ 11/20 câu)</span>
+              <span className="text-emerald-400 font-semibold">Tiêu chuẩn qua: &gt; 50% (≥ {Math.floor(totalQuestions / 2) + 1}/{totalQuestions} câu)</span>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -338,7 +354,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                   Chưa Hoàn Thành Toàn Bộ Trạm Khu Vực {sectorNumber}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
-                  Theo quy định thực nghiệm chuẩn ViSEF: Học viên <strong className="text-white">chỉ được thi sát hạch chứng chỉ</strong> sau khi đã trải nghiệm và vượt qua toàn bộ <strong>{completionStats.totalCount} trạm phòng thủ</strong> trong Khu Vực {sectorNumber}: <em>{sectorTitle}</em>.
+                  Theo quy định của ScamGuard: học viên <strong className="text-white">chỉ được làm bài kiểm tra cuối khu vực</strong> sau khi đã trải nghiệm và vượt qua toàn bộ <strong>{completionStats.totalCount} trạm phòng thủ</strong> trong Khu Vực {sectorNumber}: <em>{sectorTitle}</em>.
                 </p>
               </div>
 
@@ -445,7 +461,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                   <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/20 text-xs text-rose-300 flex items-center space-x-2">
                     <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                     <span>
-                      <strong>Lưu ý giám sát ViSEF:</strong> Kịch bản này không có từ khóa gợi ý như &quot;Không&quot; hay &quot;Luôn luôn&quot;. Hãy cân nhắc tính hợp lý trong quy trình thao tác bảo mật thực tế.
+                      <strong>Lưu ý:</strong> Kịch bản này không có từ khóa gợi ý như &quot;Không&quot; hay &quot;Luôn luôn&quot;. Hãy cân nhắc tính hợp lý trong quy trình thao tác bảo mật thực tế.
                     </span>
                   </div>
                 )}
@@ -490,7 +506,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
               {/* Question Navigation Bar (Grid 1-20) */}
               <div className="pt-3 border-t border-slate-800/80">
                 <div className="text-[11px] font-mono text-slate-400 mb-2 flex items-center justify-between">
-                  <span>Ma trận 20 câu sát hạch:</span>
+                  <span>Ma trận {totalQuestions} câu:</span>
                   <span className="text-slate-500">Màu xanh = Đã chọn • Đỏ viền = Câu khó</span>
                 </div>
                 <div className="grid grid-cols-10 sm:grid-cols-20 gap-1.5">
@@ -543,18 +559,18 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                     <div>
                       <div className="text-xs uppercase font-mono tracking-widest text-slate-400">
                         {completedRecord.isPassed
-                          ? 'CHÚC MỪNG BẠN ĐÃ ĐẠT CHỨNG CHỈ VISEF CHỦ ĐỀ 1'
-                          : 'KẾT QUẢ SÁT HẠCH CHƯA ĐỦ ĐIỀU KIỆN'}
+                          ? `CHÚC MỪNG BẠN ĐÃ HOÀN THÀNH KHU VỰC ${completedRecord.sectorNumber}`
+                          : 'KẾT QUẢ KIỂM TRA CHƯA ĐẠT'}
                       </div>
                       <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
                         {completedRecord.isPassed
-                          ? 'ĐẠT CHỨNG CHỈ NĂNG LỰC PHÒNG THỦ SỐ'
+                          ? 'ĐẠT BÀI KIỂM TRA CUỐI KHU VỰC'
                           : 'CẦN ÔN TẬP LẠI KHU VỰC & THI LẠI'}
                       </h3>
                       <p className="text-xs text-slate-400 mt-1 max-w-xl mx-auto">
                         {completedRecord.isPassed
-                          ? 'Dữ liệu sát hạch thực tế của bạn đã được ghi nhận vào kho dữ liệu nghiên cứu khoa học ViSEF 2026.'
-                          : 'Yêu cầu điểm số tối thiểu trên 50% (> 10 câu đúng trong tổng số 20 câu). Bạn hãy xem lại các câu sai và thử lại nhé!'}
+                          ? 'Kết quả bài kiểm tra đã được gửi lên máy chủ ScamGuard để tổng hợp cho đề tài.'
+                          : `Cần đúng trên 50% (hơn ${Math.floor(completedRecord.totalQuestions / 2)} trên ${completedRecord.totalQuestions} câu). Bạn hãy xem lại các câu sai và thử lại nhé!`}
                       </p>
                     </div>
 
@@ -563,7 +579,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                       <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
                         <div className="text-[11px] text-slate-400">Số câu đúng</div>
                         <div className="text-xl font-mono font-black text-cyan-400">
-                          {completedRecord.correctAnswersCount}/20
+                          {completedRecord.correctAnswersCount}/{completedRecord.totalQuestions}
                         </div>
                       </div>
 
@@ -602,21 +618,24 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                         <div className="relative z-10 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase font-mono tracking-widest text-indigo-300 font-bold">
-                              VISEF DIGITAL DEFENSE CREDENTIAL
+                              CHỨNG NHẬN HOÀN THÀNH – SCAMGUARD VN
                             </span>
-                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
-                              CHÍNH THỨC CẤP
+                            <span className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-700">
+                              DO ỨNG DỤNG CẤP
                             </span>
                           </div>
                           <div className="text-base font-bold text-white">
-                            Chứng chỉ Hoàn Thành Chủ Đề 1: Nhận Diện & Đánh Bại Lừa Đảo Số
+                            Chứng nhận hoàn thành Khu vực {completedRecord.sectorNumber}: {completedRecord.sectorTitle}
                           </div>
                           <div className="text-xs text-slate-300">
                             Cấp cho: <strong>{completedRecord.participantName}</strong> ({completedRecord.anonymousCode})
                           </div>
                           <div className="text-[11px] font-mono text-slate-400 flex flex-wrap gap-x-4 gap-y-1 pt-1">
-                            <span>Mã chứng chỉ: <strong className="text-cyan-400">{completedRecord.certificateCode}</strong></span>
-                            <span>Khu vực hoàn thành: {completedRecord.sectorTitle}</span>
+                            <span>Mã chứng nhận: <strong className="text-cyan-400">{completedRecord.certificateCode}</strong></span>
+                            <span>Điểm: {completedRecord.correctAnswersCount}/{completedRecord.totalQuestions} câu đúng</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Chứng nhận do ứng dụng ScamGuard VN (sản phẩm dự thi KHKT) tự cấp, không phải văn bằng, chứng chỉ chính thức.
                           </div>
                         </div>
                       </div>
@@ -650,7 +669,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                       onClick={onClose}
                       className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center space-x-2 cursor-pointer shadow-lg shadow-indigo-600/20"
                     >
-                      <span>Vào Mục Nghiên Cứu ViSEF Xem Dữ Liệu</span>
+                      <span>Đóng</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -660,7 +679,7 @@ export const SectorTopic1CertificationModal: React.FC<SectorTopic1CertificationM
                     <div className="space-y-4 pt-4 border-t border-slate-800">
                       <h4 className="text-sm font-bold text-white flex items-center space-x-2">
                         <FileCheck2 className="w-4 h-4 text-cyan-400" />
-                        <span>Đối soát đáp án & giải thích chuyên sâu ViSEF (20 câu):</span>
+                        <span>Đối soát đáp án & giải thích ({completedRecord.totalQuestions} câu):</span>
                       </h4>
 
                       <div className="space-y-3">

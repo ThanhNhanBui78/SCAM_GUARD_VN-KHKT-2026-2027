@@ -419,7 +419,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
   // Quick Demo Survey Action: Generates realistic survey response and immediately generates personalized roadmap
   const handleQuickDemoSurvey = () => {
     const mockPayload = {
-      participantName: userProfile.name || 'Học viên ViSEF',
+      participantName: userProfile.name || 'Học viên ScamGuard',
       isAnonymous: false,
       schoolName: 'THPT Chuyên Lê Hồng Phong',
       className: 'Khối 11 Tin',
@@ -1009,10 +1009,10 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
               <button
                 onClick={() => setIsCertificationModalOpen(true)}
                 className="px-4 py-2.5 text-xs flex items-center space-x-2 rounded-2xl shadow-lg cursor-pointer font-extrabold uppercase font-mono bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white border border-emerald-400/40 shadow-emerald-500/20"
-                title="Thi sát hạch chứng chỉ 20 câu ViSEF"
+                title="Bài kiểm tra cuối khu vực (chứng nhận của ứng dụng)"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                <span>Thi Chứng Chỉ ViSEF</span>
+                <span>Kiểm Tra Cuối Khu Vực</span>
               </button>
 
               <button
@@ -1196,8 +1196,8 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                 </span>
                 <span className="text-[8px] text-slate-500 font-mono block uppercase">
                   {hasCompletedSurvey
-                    ? '🎯 LỘ TRÌNH CÁ NHÂN HÓA VISEF: ĐÃ SẮP XẾP THEO ĐIỂM YẾU CAO NHẤT (ĐÃ BỎ THỨ TỰ TUẦN TỰ 1->12)'
-                    : '🔒 LỘ TRÌNH TẠM KHÓA: VUI LÒNG LÀM KHẢO SÁT VISEF ĐỂ NHẬN LỘ TRÌNH RIÊNG VÀ MỞ KHÓA TRẠM ĐẦU TIÊN'}
+                    ? '🎯 LỘ TRÌNH CÁ NHÂN HÓA: ĐÃ SẮP XẾP THEO KHẢO SÁT ĐẦU VÀO CỦA BẠN (KHÔNG THEO THỨ TỰ 1->12)'
+                    : '🔒 LỘ TRÌNH TẠM KHÓA: VUI LÒNG LÀM KHẢO SÁT ĐẦU VÀO ĐỂ NHẬN LỘ TRÌNH RIÊNG VÀ MỞ KHÓA TRẠM ĐẦU TIÊN'}
                 </span>
               </div>
             </div>
@@ -1209,16 +1209,16 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                   type="button"
                   onClick={() => setIsSurveyModalOpen(true)}
                   className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white text-xs font-bold font-mono transition shadow-lg shadow-rose-500/25 flex items-center gap-1.5 cursor-pointer animate-pulse active:scale-95"
-                  title="Làm khảo nghiệm ViSEF để mở khóa lộ trình cá nhân hóa"
+                  title="Làm khảo sát đầu vào để mở khóa lộ trình cá nhân hóa"
                 >
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-200" />
-                  <span>Khảo Sát ViSEF Để Mở Khóa</span>
+                  <span>Khảo Sát Đầu Vào Để Mở Khóa</span>
                 </button>
               ) : (
                 <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
                   <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Lộ Trình Cá Nhân Hóa ViSEF</span>
+                    <span>Lộ Trình Cá Nhân Hóa</span>
                   </span>
                   <button
                     type="button"
@@ -1475,7 +1475,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                   ĐỘ ƯU TIÊN: HẠNG {activeSectorIndex + 1} / {sectorsSorted.length} (RỦI RO CAO)
                 </span>
                 <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/25">
-                  TỶ LỆ LỖI KHẢO SÁT ViSEF: {calculateSectorFailureRate(currentSector.id, analyticsData, personalSurveyData).toFixed(1)}%
+                  MỨC ƯU TIÊN THEO KHẢO SÁT: {calculateSectorFailureRate(currentSector.id, analyticsData, personalSurveyData).toFixed(0)}/100
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-semibold leading-relaxed mt-1">
@@ -1496,22 +1496,22 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold border border-amber-500/40 uppercase tracking-wider">
-                      Yêu Cầu Chẩn Đoán Ban Đầu ViSEF
+                      Cần Làm Khảo Sát Đầu Vào
                     </span>
                     <span className="text-xs font-mono text-rose-400 font-bold">
                       Đã gỡ bỏ thứ tự cố định 1 → 12
                     </span>
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-1">
-                    Lộ Trình Đang Khóa: Vui Lòng Làm Khảo Sát ViSEF Để Mở Khóa Huấn Luyện
+                    Lộ Trình Đang Khóa: Vui Lòng Làm Khảo Sát Đầu Vào Để Mở Khóa Huấn Luyện
                   </h3>
                 </div>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Nhằm đảm bảo tính khoa học thực nghiệm của đề tài <strong>ViSEF 2026</strong>, ScamGuard đã <strong>hủy bỏ lộ trình tuần tự 1 → 12</strong>. 
-              Bạn cần thực hiện bài khảo nghiệm ViSEF (17 câu hỏi thực tế). Ngay sau khi hoàn thành, hệ thống sẽ tự động đo lường điểm yếu, <strong>xếp lộ trình cá nhân hóa riêng</strong> cho bạn và <strong>mở khóa ngay trạm đầu tiên của khu vực nguy cơ cao nhất</strong> để bạn học!
+              Để lộ trình phù hợp với từng người, ScamGuard <strong>không xếp khu vực theo thứ tự 1 → 12</strong>. 
+              Bạn cần làm bài khảo sát đầu vào. Ngay sau khi hoàn thành, hệ thống sẽ tự động đo lường điểm yếu, <strong>xếp lộ trình cá nhân hóa riêng</strong> cho bạn và <strong>mở khóa ngay trạm đầu tiên của khu vực nguy cơ cao nhất</strong> để bạn học!
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -1521,7 +1521,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                 className="px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-rose-500/25 flex items-center gap-2 cursor-pointer active:scale-95"
               >
                 <FileText className="w-4 h-4" />
-                <span>📝 Làm Khảo Sát ViSEF (5 Phút) Để Mở Khóa</span>
+                <span>📝 Làm Khảo Sát Đầu Vào (5 Phút) Để Mở Khóa</span>
               </button>
 
               <button
@@ -1546,7 +1546,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-emerald-400" />
-                      Lộ Trình Đã Cá Nhân Hóa Theo Khảo Sát ViSEF
+                      Lộ Trình Đã Cá Nhân Hóa Theo Khảo Sát Đầu Vào
                     </span>
                     <span className="text-xs font-mono text-cyan-400 font-bold">
                       Ưu Tiên #1: {sectorsSorted[0]?.title}
@@ -1578,7 +1578,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Dựa trên bài khảo nghiệm ViSEF của bạn, hệ thống AI xác định bạn có chỉ số tổn thương cao nhất ({calculateSectorFailureRate(sectorsSorted[0]?.id, analyticsData, personalSurveyData).toFixed(1)}% rủi ro) ở <strong>{sectorsSorted[0]?.title}</strong>. 
+              Theo câu trả lời khảo sát đầu vào của bạn, khu vực có mức ưu tiên cao nhất ({calculateSectorFailureRate(sectorsSorted[0]?.id, analyticsData, personalSurveyData).toFixed(0)}/100) là <strong>{sectorsSorted[0]?.title}</strong>. 
               Các phân khu đã được tái sắp xếp theo mức độ ưu tiên giảm dần, và trạm đầu tiên đã sẵn sàng để bạn tham gia rèn luyện!
             </p>
           </div>
@@ -1970,7 +1970,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                             sectorNumber: currentSector.sectorNumber,
                             nodeIndex: 99,
                             title: `Cổng Sát Hạch Chứng Chỉ Khu Vực ${currentSector.sectorNumber}`,
-                            subtitle: `Yêu cầu hoàn thành tất cả 10 trạm trước khi thi sát hạch 20 câu ViSEF. Hiện còn thiếu ${remainingNodes} trạm.`,
+                            subtitle: `Yêu cầu hoàn thành tất cả 10 trạm trước khi làm bài kiểm tra cuối khu vực. Hiện còn thiếu ${remainingNodes} trạm.`,
                             kind: 'lesson',
                             icon: '🎖️',
                             threatCategory: 'CHỨNG CHỈ TỐT NGHIỆP',
@@ -1978,16 +1978,16 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                             estimatedMinutes: 5,
                             lessonData: {
                               id: `cert-briefing-${currentSector.sectorNumber}`,
-                              title: `Quy Trình Sát Hạch Chuẩn ViSEF - Khu Vực ${currentSector.sectorNumber}`,
+                              title: `Bài Kiểm Tra Cuối Khu Vực ${currentSector.sectorNumber}`,
                               scenarioType: 'SMS_PHISHING',
-                              scenarioText: `Để kích hoạt bài thi Sát Hạch 20 Câu Hỏi Chuẩn Hóa ViSEF (>50% đạt chuẩn), bạn cần vượt qua toàn bộ 10 trạm huấn luyện trong Khu Vực ${currentSector.sectorNumber}.`,
+                              scenarioText: `Để làm bài kiểm tra cuối khu vực (đúng trên 50% là đạt), bạn cần vượt qua toàn bộ 10 trạm huấn luyện trong Khu Vực ${currentSector.sectorNumber}.`,
                               evidenceItems: [],
                               difficulty: 'ADVANCED',
                               tactics: [],
                               learningObjectives: [
                                 `Hoàn thành ${sectorCompletedNodes.length}/${currentSector.nodes.length} trạm hiện tại`,
                                 'Mở khóa bài thi sát hạch 20 câu hỏi',
-                                'Đạt chuẩn để nhận chứng chỉ số ViSEF 2026',
+                                'Đạt để nhận chứng nhận hoàn thành khu vực của ứng dụng',
                               ],
                               steps: [],
                             },
@@ -2058,7 +2058,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                 <Lock className="w-8 h-8 text-amber-400" />
               </div>
               <h4 className="text-lg sm:text-xl font-black text-white tracking-tight mb-2 font-mono">
-                LỘ TRÌNH ĐANG CHỜ KHẢO NGHIỆM VISEF
+                LỘ TRÌNH ĐANG CHỜ KHẢO SÁT ĐẦU VÀO
               </h4>
               <p className="text-xs sm:text-sm text-slate-300 max-w-md leading-relaxed mb-6 font-medium">
                 Toàn bộ các trạm học sẽ tự động được AI xếp lại theo mức độ rủi ro riêng của bạn và <strong>mở khóa ngay trạm đầu tiên</strong> sau khi bạn hoàn thành bài khảo nghiệm.
@@ -2070,7 +2070,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-rose-500/25 transition cursor-pointer flex items-center gap-2 active:scale-95"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Làm Khảo Sát ViSEF (5 Phút) Để Mở Khóa</span>
+                  <span>Làm Khảo Sát Đầu Vào (5 Phút) Để Mở Khóa</span>
                 </button>
                 <button
                   type="button"
@@ -2099,15 +2099,15 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                   </span>
                   {certifiedSectors.includes(currentSector.sectorNumber) && (
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                      ✓ ĐÃ CẤP CHỨNG CHỈ VISEF
+                      ✓ ĐÃ HOÀN THÀNH KHU VỰC
                     </span>
                   )}
                 </div>
                 <h4 className="text-base font-bold text-white">
-                  Sát Hạch Chứng Chỉ Năng Lực Phòng Thủ Chủ Đề 1 (20 Câu Bẫy ViSEF)
+                  Bài Kiểm Tra Cuối Khu Vực {currentSector.sectorNumber}
                 </h4>
                 <p className="text-xs text-slate-300 max-w-xl">
-                  Theo tiêu chuẩn ViSEF: Khi hoàn thành khu vực, học viên cần đạt điểm &gt; 50% trong bài thi 20 câu hỏi (không có từ khóa gợi ý như &quot;Không&quot;) để chính thức tốt nghiệp và lưu hồ sơ vào ViSEF.
+                  Theo quy định của ScamGuard: khi hoàn thành khu vực, học viên cần đúng trên 50% bài kiểm tra cuối khu vực (không có từ khóa gợi ý như &quot;Không&quot;) để nhận chứng nhận hoàn thành khu vực của ứng dụng.
                 </p>
               </div>
             </div>
@@ -2295,7 +2295,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
               <div className="space-y-3">
                 <div className="p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/40 text-xs text-amber-200 flex items-center space-x-2.5">
                   <Lock className="w-4 h-4 flex-shrink-0 text-amber-400" />
-                  <span>Cần hoàn thành bài khảo nghiệm ViSEF để mở khóa và nhận lộ trình cá nhân hóa!</span>
+                  <span>Cần hoàn thành bài khảo sát đầu vào để mở khóa và nhận lộ trình cá nhân hóa!</span>
                 </div>
                 <button
                   type="button"
@@ -2306,7 +2306,7 @@ export const RoadmapSnakePath: React.FC<RoadmapSnakePathProps> = ({
                   className="w-full py-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-lg cursor-pointer bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white transition active:scale-95"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Làm Khảo Sát ViSEF Để Mở Khóa</span>
+                  <span>Làm Khảo Sát Đầu Vào Để Mở Khóa</span>
                 </button>
               </div>
             ) : getNodeStatus(briefingNode, briefingNode.nodeIndex) === 'locked' ? (

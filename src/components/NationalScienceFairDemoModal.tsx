@@ -625,7 +625,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
 
       const displayName = surveyForm.isAnonymous
         ? (surveyForm.anonymousCode?.trim() || 'Khảo nghiệm viên Ẩn danh')
-        : (surveyForm.participantName?.trim() || 'Khảo nghiệm viên ViSEF 2026');
+        : (surveyForm.participantName?.trim() || 'Người tham gia khảo sát');
 
       // Danh sách các khu vực từng tiếp xúc thực tế (chọn khác 'A_NEVER')
       const derivedExperiencedSectors = Object.entries(surveyForm.experienceAnswers)
@@ -675,7 +675,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
         },
         feedbackNote:
           surveyForm.feedbackNote ||
-          `Phiếu khảo sát chuẩn hóa ViSEF 2026 (Đầy đủ Phần 1: Kinh nghiệm thực tế & Phần 2: Ứng biến 12 khu vực). Trường: ${surveyForm.schoolName || 'THPT Nguyễn Khuyến'} - Lớp: ${surveyForm.className || '10A1'}. Phản xạ an toàn: ${safeCount}/${totalTrapsCount} kịch bản. Tiếp xúc thực tế: ${derivedExperiencedSectors.length}/12 khu vực.`,
+          `Phiếu khảo sát đầu vào ScamGuard VN (Đầy đủ Phần 1: Kinh nghiệm thực tế & Phần 2: Ứng biến 12 khu vực). Trường: ${surveyForm.schoolName || 'THPT Nguyễn Khuyến'} - Lớp: ${surveyForm.className || '10A1'}. Phản xạ an toàn: ${safeCount}/${totalTrapsCount} kịch bản. Tiếp xúc thực tế: ${derivedExperiencedSectors.length}/12 khu vực.`,
       };
 
       let resData = null;
@@ -753,7 +753,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
           JSON.stringify({
             calculatedScore: 38,
             postScore: 89,
-            participantName: surveyForm.participantName.trim() || 'Khảo nghiệm viên ViSEF',
+            participantName: surveyForm.participantName.trim() || 'Người tham gia khảo sát',
             demographicGroup: surveyForm.demographicGroup,
             schoolName: surveyForm.schoolName,
             className: surveyForm.className,
@@ -772,7 +772,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
         calculatedScore: 38,
         postScore: 89,
         safeCount: 3,
-        participantName: surveyForm.participantName.trim() || 'Khảo nghiệm viên ViSEF',
+        participantName: surveyForm.participantName.trim() || 'Người tham gia khảo sát',
         location: surveyForm.location,
         demographicGroup: surveyForm.demographicGroup,
         experiencedCount: 4,
@@ -857,12 +857,12 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider font-mono">
-                  Khảo Nghiệm ViSEF 2026 • Live Survey
+                  Khảo Sát Đầu Vào • ScamGuard VN
                 </span>
                 <span className="text-xs text-cyan-300 font-mono hidden sm:inline">13 Câu Hỏi Chuẩn Hóa • 5 Phút</span>
               </div>
               <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight">
-                Khảo Nghiệm ViSEF 5 Phút (Live Survey)
+                Khảo Sát Đầu Vào 5 Phút
               </h2>
             </div>
           </div>
@@ -912,11 +912,11 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold border border-emerald-500/30">
-                        Xác Nhận Dữ Liệu Nghiên Cứu ViSEF Thành Công
+                        Đã Gửi Phiếu Khảo Sát
                       </span>
                     </div>
                     <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                      Câu trả lời của bạn đã được ghi nhận vào Cơ sở dữ liệu ViSEF 2026!
+                      Câu trả lời của bạn đã được gửi lên máy chủ ScamGuard để tổng hợp cho đề tài.
                     </h3>
                     <p className="text-xs text-slate-300 leading-relaxed">
                       Khảo nghiệm viên <strong>{submittedResult.participantName}</strong> ({submittedResult.location}) đã hoàn thành toàn diện <strong>17 câu hỏi chuẩn hóa (bao gồm 12 bẫy thực tế)</strong>. Dữ liệu đã được gán nhãn cho nghiên cứu.
@@ -966,7 +966,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                 {/* 12 Detailed Scenario Answers & Trap Explanations */}
                 <div className="pt-4 border-t border-slate-800 space-y-3">
                   <h4 className="text-sm font-bold text-white flex items-center justify-between">
-                    <span>Phân Tích Chi Tiết 12 Khu Vực (Đồng Bộ Phần 1 & Phần 2 ViSEF Analysis):</span>
+                    <span>Phân Tích Chi Tiết 12 Khu Vực (Phần 1 & Phần 2):</span>
                     <span className="text-xs font-mono text-purple-300">12/12 Scenarios Evaluated</span>
                   </h4>
 
@@ -1032,7 +1032,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                           </div>
 
                           <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-amber-200 leading-relaxed font-sans text-xs">
-                            <strong className="text-amber-400 block mb-1">Bóc Tách Bẫy Logic & Phân Tích Tâm Lý (ViSEF Insight):</strong>
+                            <strong className="text-amber-400 block mb-1">Bóc Tách Bẫy Logic & Phân Tích Tâm Lý:</strong>
                             <span>{q.trapExplanation}</span>
                           </div>
                         </div>
@@ -1094,7 +1094,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                       className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <BarChart3 className="w-4 h-4 text-indigo-400" />
-                      <span>Xem Biểu Đồ Tổng Quan ViSEF</span>
+                      <span>Xem Biểu Đồ Tổng Quan</span>
                     </button>
                   )}
                   <button
@@ -1113,7 +1113,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
               <div className="bg-slate-900 border-l-4 border-l-indigo-600 border border-slate-800 p-5 sm:p-6 lg:p-7 rounded-3xl space-y-4 shadow-xl">
                 <div className="flex items-center justify-between">
                   <span className="px-3 py-1 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 font-mono text-xs sm:text-sm font-bold uppercase tracking-wider">
-                    Google Forms Format • Đề Tài Nghiên Cứu ViSEF 2026
+                    Khảo sát đầu vào • Đề tài KHKT ScamGuard VN
                   </span>
                   <span className="text-sm text-rose-400 font-bold">* Bắt buộc</span>
                 </div>
@@ -1124,7 +1124,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
 
                 <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
                   Khảo sát này gồm <strong>17 câu hỏi chuẩn hóa</strong> (5 câu nhân khẩu học & 12 kịch bản bẫy thực tế) nhằm thu thập dữ liệu hiện trạng độc lập từ người tham gia <strong>trước khi sử dụng ứng dụng</strong>. 
-                  Mọi câu trả lời của bạn sẽ được tự động tổng hợp vào <strong>Biểu đồ Thống kê Suy luận Quốc gia</strong> để làm bằng chứng thực nghiệm ViSEF.
+                  Câu trả lời của bạn được gửi lên máy chủ ScamGuard để tổng hợp thống kê cho đề tài.
                 </p>
               </div>
 
@@ -1137,7 +1137,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                       ? 'Thông Tin Nhân Khẩu Học & Thói Quen Số'
                       : surveyStep === 2
                       ? 'Phần 1: Khảo Sát Kinh Nghiệm Thực Tế (12 Khu Vực)'
-                      : 'Phần 2: 12 Bài Tập Tình Huống Ứng Biến Thực Chiến (ViSEF 2026)'}
+                      : 'Phần 2: 12 Bài Tập Tình Huống Ứng Biến Thực Chiến'}
                   </span>
                   <span className="text-cyan-400">Trang {surveyStep} của 3</span>
                 </div>
@@ -1553,7 +1553,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                           </span>
                         </div>
                         <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shrink-0">
-                          Đo Lường Phản Xạ An Toàn ViSEF
+                          Đo Lường Phản Xạ An Toàn
                         </span>
                       </div>
                       <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
@@ -1740,7 +1740,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                                   <div>
                                     <div className="text-xs sm:text-sm font-black text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
                                       <Zap className="w-4 h-4 text-cyan-400 shrink-0" />
-                                      <span>PHẦN 2: BÀI TẬP PHẢN XẠ ỨNG BIẾN THỰC CHIẾN (VISEF 2026)</span>
+                                      <span>PHẦN 2: BÀI TẬP PHẢN XẠ ỨNG BIẾN THỰC CHIẾN</span>
                                     </div>
                                     <span className="text-[10px] sm:text-[11px] text-indigo-300/80 font-mono block">
                                       Đo lường năng lực phản xạ an toàn & giải mã bẫy tâm lý
@@ -1856,7 +1856,7 @@ export const NationalScienceFairDemoModal: React.FC<NationalScienceFairDemoModal
                         )}
                         <span>
                           {isAllTrapsAnswered
-                            ? 'Gửi Phiếu & Đồng Bộ Dữ Liệu Lên Biểu Đồ ViSEF'
+                            ? 'Gửi Phiếu Khảo Sát'
                             : `Gửi Phiếu (Còn ${totalTrapsCount - answeredTrapCount} kịch bản chưa chọn)`}
                         </span>
                       </button>

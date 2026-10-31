@@ -902,7 +902,7 @@ export default function App() {
                         Lộ Trình Huấn Luyện Phòng Tuyến Số
                       </h1>
                       <p className="text-sm text-slate-300 leading-relaxed">
-                        Chinh phục 8 khu vực mô phỏng phòng thủ không gian mạng, vượt qua các thử thách trạm và đánh bại trùm lừa đảo để rèn luyện phản xạ an ninh mạng tối ưu.
+                        Chinh phục 12 khu vực mô phỏng phòng thủ không gian mạng, vượt qua các thử thách trạm và đánh bại trùm lừa đảo để rèn luyện phản xạ an ninh mạng tối ưu.
                       </p>
                     </div>
 
