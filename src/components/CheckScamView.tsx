@@ -21,6 +21,70 @@ import { PiiRedactTab } from './PiiRedactTab';
 import { DomainReputationTab } from './DomainReputationTab';
 import { runClientSideTextAnalysis } from '../utils/clientForensicsEngine';
 
+type FocusTarget = 'message' | 'url' | 'email' | 'phone';
+type FocusField = 'text' | 'url' | 'sender';
+
+// Mỗi nút "Loại đối tượng" quyết định ô nào hiện, theo thứ tự nào, ô nào bắt buộc; chỉ gửi các ô đang hiện
+const FOCUS_FORM: Record<FocusTarget, { channel: CommunicationChannel; required: FocusField; fields: { key: FocusField; label: string }[] }> = {
+  message: {
+    channel: 'sms',
+    required: 'text',
+    fields: [
+      { key: 'text', label: 'Nội dung tin nhắn cần giám định' },
+      { key: 'url', label: 'Link trong tin (nếu có)' },
+      { key: 'sender', label: 'Người gửi: tên thương hiệu hoặc số điện thoại (nếu có)' },
+    ],
+  },
+  url: {
+    channel: 'messenger',
+    required: 'url',
+    fields: [
+      { key: 'url', label: 'Link cần kiểm tra' },
+      { key: 'text', label: 'Nhận link ở đâu, ai gửi (nếu có)' },
+    ],
+  },
+  email: {
+    channel: 'email',
+    required: 'sender',
+    fields: [
+      { key: 'sender', label: 'Địa chỉ email người gửi' },
+      { key: 'text', label: 'Tiêu đề và nội dung thư' },
+      { key: 'url', label: 'Link trong thư (nếu có)' },
+    ],
+  },
+  phone: {
+    channel: 'phone',
+    required: 'sender',
+    fields: [
+      { key: 'sender', label: 'Số gọi hoặc nhắn đến' },
+      { key: 'text', label: 'Đối phương nói gì, yêu cầu gì' },
+      { key: 'url', label: 'Link hoặc ứng dụng được yêu cầu cài (nếu có)' },
+    ],
+  },
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@([a-z0-9.-]+\.[a-z0-9-]{2,})$/i;
+
+// Nhận dạng loại số để báo ngay khi nhập (giữ giống classifySenderPhone trong server/riskEngine.ts)
+function describePhoneKind(sender: string): string | null {
+  const raw = sender.trim();
+  if (!raw || raw.includes('@')) return null;
+  if (/[a-z]/i.test(raw)) return /^[a-z0-9_. -]{2,20}$/i.test(raw) ? 'tên thương hiệu SMS (brandname)' : null;
+  if (!/^[+\d\s().-]+$/.test(raw)) return null;
+  let digits = raw.replace(/\D/g, '');
+  const international = raw.startsWith('+') || digits.startsWith('00');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (international || (digits.startsWith('84') && digits.length >= 11)) {
+    if (!digits.startsWith('84')) return 'số nước ngoài';
+    digits = '0' + digits.slice(2);
+  }
+  if (/^0[35789]\d{8}$/.test(digits)) return 'số di động Việt Nam';
+  if (/^02\d{9}$/.test(digits)) return 'số máy bàn Việt Nam (02x)';
+  if (/^1[89]00\d{4,6}$/.test(digits)) return 'số tổng đài 1800/1900';
+  if (/^\d{3,5}$/.test(digits)) return 'đầu số ngắn';
+  return null;
+}
+
 interface CheckScamViewProps {
   onOpenEmergency: () => void;
   onOpenSentinel?: () => void;
@@ -40,7 +104,7 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
   }, [subView]);
 
   // Target object type focus filter for Tab 1
-  const [targetObject, setTargetObject] = useState<'message' | 'url' | 'email' | 'phone'>('message');
+  const [targetObject, setTargetObject] = useState<FocusTarget>('message');
 
   // Input states for Tab 1 (Smart Link & Text)
   const [textInput, setTextInput] = useState('');
@@ -89,7 +153,8 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
         'Đối phương tự xưng là cán bộ Công An Quận 1 gọi điện hù dọa bảo số tài khoản có dính líu đến đường dây rửa tiền xuyên quốc gia, yêu cầu chuyển 50 triệu tiền bảo lãnh án treo vào số tài khoản.'
       );
       setUrlInput('');
-      setSenderInput('024.xxxx.xxxx / STK: 10xxxxxxxx - tự xưng Công An Quận 1');
+      // Dãy +44 20 7946 0xxx được Ofcom (Anh) dành riêng cho phim ảnh, không phải số của ai
+      setSenderInput('+44 20 7946 0123');
       setChannel('phone');
     }
   };
@@ -118,10 +183,21 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
     }
   }[targetObject];
 
+  const focusForm = FOCUS_FORM[targetObject];
+  const fieldValues: Record<FocusField, string> = { text: textInput, url: urlInput, sender: senderInput };
+  const fieldSetters: Record<FocusField, (v: string) => void> = { text: setTextInput, url: setUrlInput, sender: setSenderInput };
+  // Ô bị ẩn khi đổi nút vẫn giữ chữ đã gõ nhưng không được gửi đi
+  const visibleValue = (key: FocusField) => (focusForm.fields.some((f) => f.key === key) ? fieldValues[key] : '');
+  const emailDomain = targetObject === 'email' ? senderInput.trim().match(EMAIL_PATTERN)?.[1] : undefined;
+  const phoneKind = targetObject === 'phone' ? describePhoneKind(senderInput) : null;
+  const requiredLabel = focusForm.fields.find((f) => f.key === focusForm.required)!.label;
+  const requiredFilled = !!fieldValues[focusForm.required].trim();
+  const canSubmit = requiredFilled && (targetObject !== 'email' || !!emailDomain);
+
   // Analyze Link & Text
   const handleAnalyzeText = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!textInput.trim() && !urlInput.trim() && !senderInput.trim()) return;
+    if (!canSubmit) return;
 
     setLoading(true);
     setError(null);
@@ -132,9 +208,9 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: textInput,
-          url: urlInput,
-          sender: senderInput,
+          text: visibleValue('text'),
+          url: visibleValue('url'),
+          sender: visibleValue('sender'),
           channel,
         }),
       });
@@ -142,7 +218,7 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok || !contentType.includes('application/json')) {
         console.warn('API returned non-JSON or status error, activating client-side forensics engine.');
-        const fallback = runClientSideTextAnalysis(textInput, urlInput, senderInput, channel);
+        const fallback = runClientSideTextAnalysis(visibleValue('text'), visibleValue('url'), visibleValue('sender'), channel);
         setResult(fallback);
         return;
       }
@@ -151,7 +227,7 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
       setResult(data);
     } catch (err: any) {
       console.warn('Network or server unreachable, running client-side forensics engine:', err);
-      const fallback = runClientSideTextAnalysis(textInput, urlInput, senderInput, channel);
+      const fallback = runClientSideTextAnalysis(visibleValue('text'), visibleValue('url'), visibleValue('sender'), channel);
       setResult(fallback);
     } finally {
       setLoading(false);
@@ -616,7 +692,8 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                         key={obj.id}
                         type="button"
                         onClick={() => {
-                          setTargetObject(obj.id as any);
+                          setTargetObject(obj.id as FocusTarget);
+                          setChannel(FOCUS_FORM[obj.id as FocusTarget].channel);
                           setResult(null);
                         }}
                         className={`px-3 py-2 rounded-xl text-xs font-black border transition-all cursor-pointer flex-1 text-center font-mono ${
@@ -633,57 +710,48 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
 
                 {/* Form Inputs */}
                 <form onSubmit={handleAnalyzeText} className="space-y-4">
-                  {/* Text Input area */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400 font-mono uppercase">
-                      Nội Dung Tin Nhắn / Email Cần Giám Định:
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      placeholder={placeholders.text}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 leading-relaxed font-sans"
-                    />
-                  </div>
+                  {focusForm.fields.map(({ key, label }) => (
+                    <div key={key} className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-400 font-mono uppercase">
+                        {label}
+                        {key === focusForm.required && <span className="text-cyan-400"> *</span>}
+                      </label>
+                      {key === 'text' ? (
+                        <textarea
+                          rows={4}
+                          value={textInput}
+                          onChange={(e) => setTextInput(e.target.value)}
+                          placeholder={placeholders.text}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 leading-relaxed font-sans"
+                        />
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            {key === 'url' ? <LinkIcon className="h-4 w-4 text-slate-500" /> : <MessageSquare className="h-4 w-4 text-slate-500" />}
+                          </div>
+                          <input
+                            type="text"
+                            value={fieldValues[key]}
+                            onChange={(e) => fieldSetters[key](e.target.value)}
+                            placeholder={placeholders[key]}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                          />
+                        </div>
+                      )}
 
-                  {/* URL input */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400 font-mono uppercase">
-                      Đường dẫn URL nghi vấn:
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <LinkIcon className="h-4 w-4 text-slate-500" />
-                      </div>
-                      <input
-                        type="text"
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        placeholder={placeholders.url}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
-                      />
+                      {/* Báo ngay khi nhập: chỉ nhận dạng, không chấm điểm */}
+                      {key === 'sender' && targetObject === 'email' && senderInput.trim() && (
+                        <p className={`text-[11px] font-mono ${emailDomain ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {emailDomain ? `✓ Tên miền người gửi: ${emailDomain}` : '⚠ Chưa đúng dạng email (ví dụ: ten@tenmien.com)'}
+                        </p>
+                      )}
+                      {key === 'sender' && targetObject === 'phone' && senderInput.trim() && (
+                        <p className={`text-[11px] font-mono ${phoneKind ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {phoneKind ? `✓ Nhận dạng: ${phoneKind}` : '⚠ Chưa nhận dạng được loại số, vẫn giám định được theo nội dung'}
+                        </p>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Sender input */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400 font-mono uppercase">
-                      Người Gửi / Số Điện Thoại Gây Áp Lực:
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <MessageSquare className="h-4 w-4 text-slate-500" />
-                      </div>
-                      <input
-                        type="text"
-                        value={senderInput}
-                        onChange={(e) => setSenderInput(e.target.value)}
-                        placeholder={placeholders.sender}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
-                      />
-                    </div>
-                  </div>
+                  ))}
 
                   {/* Checkbox */}
                   <div className="flex items-start space-x-2 bg-slate-900/30 p-3 rounded-xl border border-slate-800/40 text-xs text-slate-400">
@@ -745,7 +813,7 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
 
                     <button
                       type="submit"
-                      disabled={loading || (!textInput.trim() && !urlInput.trim() && !senderInput.trim())}
+                      disabled={loading || !canSubmit}
                       className="flex-1 py-4 rounded-2xl bg-cyan-500 text-slate-950 font-black text-sm hover:bg-cyan-400 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-cyan-500/10 font-mono"
                     >
                       {loading ? (
@@ -761,6 +829,11 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                       )}
                     </button>
                   </div>
+                  {!canSubmit && (
+                    <p className="text-[11px] text-slate-500 font-mono text-right">
+                      {requiredFilled ? 'Cần nhập đúng dạng địa chỉ email để giám định.' : `Cần nhập: ${requiredLabel}`}
+                    </p>
+                  )}
                 </form>
               </motion.div>
             )}
