@@ -239,7 +239,7 @@ export interface AnalysisResult {
     attackVector: string;
     target: string;
     potentialImpact: string[];
-    confidence: number;
+    confidence?: number;
   };
   attackChain?: string[];
   urlAnalysis?: {
@@ -262,6 +262,8 @@ export interface AnalysisResult {
   analysisEngine?: 'AI_GEMINI' | 'RULES_ONLY';
   isInvalidBankImage?: boolean;
   invalidImageReason?: string;
+  // Có giá trị khi hệ thống chưa giám định được (không có AI, ảnh mờ, ảnh không phải biên lai…): giao diện không hiện mức an toàn
+  notAssessedReason?: string;
 }
 
 export type ScamDnaDimensionKey =

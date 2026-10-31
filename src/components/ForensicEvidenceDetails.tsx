@@ -103,7 +103,7 @@ export const ForensicEvidenceDetails: React.FC<ForensicEvidenceDetailsProps> = (
       ctx.fillText(`PHÂN LOẠI   : ${result.threatClassification?.primaryThreat || 'Phishing/Social Eng'}`, 60, 235);
       ctx.fillText(`THỜI GIAN   : ${new Date().toLocaleString('vi-VN')}`, 60, 265);
 
-      ctx.fillText(`ĐỘ TIN CẬY  : ${result.threatClassification?.confidence || 95.8}%`, 650, 205);
+      ctx.fillText(`ĐỘ TIN CẬY  : ${result.threatClassification?.confidence !== undefined ? `${result.threatClassification.confidence}%` : 'không có'}`, 650, 205);
       ctx.fillText(`CƠ CHẾ MẪU  : Phân Tích Cục Bộ (Local Sandbox)`, 650, 235);
       ctx.fillText(`XÁC THỰC    : CHỮ KÝ SỐ CRYPTO-SIGNED SECURE`, 650, 265);
 
@@ -503,7 +503,7 @@ export const ForensicEvidenceDetails: React.FC<ForensicEvidenceDetailsProps> = (
           </div>
           <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
             <p className="text-slate-500 uppercase font-black text-[9px] tracking-wider">PRIMARY TARGET</p>
-            <p className="text-white font-black mt-1 text-xs truncate uppercase">{result.threatClassification?.target || 'CREDENTIALS'}</p>
+            <p className="text-white font-black mt-1 text-xs truncate uppercase">{result.threatClassification?.target || 'Không xác định'}</p>
           </div>
         </div>
       </div>
@@ -748,17 +748,23 @@ export const ForensicEvidenceDetails: React.FC<ForensicEvidenceDetailsProps> = (
               <div className="flex justify-between border-b border-slate-900 pb-1.5">
                 <span className="text-slate-500">Potential Impact</span>
                 <div className="text-right flex flex-col items-end space-y-0.5">
-                  {result.threatClassification.potentialImpact.map((impact, idx) => (
-                    <span key={idx} className="text-slate-200 font-bold">
-                      ⚠ {impact}
-                    </span>
-                  ))}
+                  {result.threatClassification.potentialImpact.length > 0 ? (
+                    result.threatClassification.potentialImpact.map((impact, idx) => (
+                      <span key={idx} className="text-slate-200 font-bold">
+                        ⚠ {impact}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-slate-500">Không xác định</span>
+                  )}
                 </div>
               </div>
-              <div className="flex justify-between pt-1">
-                <span className="text-slate-500">AI Confidence</span>
-                <span className="text-cyan-400 font-bold">{result.threatClassification.confidence}%</span>
-              </div>
+              {result.threatClassification.confidence !== undefined && (
+                <div className="flex justify-between pt-1">
+                  <span className="text-slate-500">AI Confidence</span>
+                  <span className="text-cyan-400 font-bold">{result.threatClassification.confidence}%</span>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -345,22 +345,27 @@ export function createExpressApp() {
         context: optionalContext,
       });
 
-      const sm = report?.structuralMetrics || {
-        fontMismatchDetected: true,
-        fontScore: 70,
-        alignmentIrregularityDetected: true,
-        spacingScore: 65,
-        watermarkSealStatus: 'BLURRED_SYNTHETIC',
-        compressionArtifactDetected: true,
-        artifactScore: 75,
-        metadataTemporalConsistency: 'SUSPICIOUS_ROUND_NUMBER',
-      };
-      const riskScore = typeof report?.anomalySuspicionScore === 'number' ? report.anomalySuspicionScore : 65;
-      // Ảnh không đọc được hoặc chưa có AI: nói rõ là không đánh giá được, không đưa cảnh báo dựng sẵn
-      const notAssessed = report?.verdictClassification === 'INSUFFICIENT_IMAGE_QUALITY';
+      const sm = report.structuralMetrics;
+      // Ảnh không đọc được, chưa có AI, hoặc không phải biên lai chuyển khoản: nói rõ là chưa giám định, không đưa cảnh báo dựng sẵn
+      const notReceipt = report.aiAnalyzed && report.isBankTransferReceipt === false;
+      const notAssessed = report.verdictClassification === 'INSUFFICIENT_IMAGE_QUALITY';
+      const notAssessedReason = !notAssessed
+        ? undefined
+        : !report.aiAnalyzed
+          ? 'Chưa có AI phân tích ảnh nên chưa giám định được biên lai này.'
+          : notReceipt
+            ? `Ảnh này là ${report.documentType || 'giấy tờ khác'}, không phải biên lai chuyển khoản. ScamGuard chỉ giám định biên lai chuyển khoản ngân hàng hoặc ví điện tử.`
+            : 'AI chưa đánh giá được ảnh này (ảnh mờ hoặc thiếu thông tin).';
+      const riskScore = notAssessed ? 0 : report.anomalySuspicionScore;
+      // Cùng ngưỡng với giao diện (ThreatAssessmentResult): Cao từ 70, Trung bình từ 40
       let riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE' = 'LOW';
-      if (riskScore >= 65) riskLevel = 'HIGH';
-      else if (riskScore >= 35) riskLevel = 'MEDIUM';
+      if (riskScore >= 70) riskLevel = 'HIGH';
+      else if (riskScore >= 40) riskLevel = 'MEDIUM';
+      const BILL_VERDICT_LABEL: Record<string, string> = {
+        HIGH_ANOMALY_SUSPECTED: 'Nghi biên lai bị chỉnh sửa',
+        MODERATE_ANOMALIES: 'Có điểm bất thường cần kiểm tra thêm',
+        LOW_ANOMALY_CONSISTENT: 'Chưa thấy dấu hiệu chỉnh sửa rõ ràng',
+      };
 
       const signals = [
         {
@@ -387,15 +392,8 @@ export function createExpressApp() {
         },
       ];
 
-      const rawRegions = Array.isArray(report?.explainableSuspiciousRegions) && report.explainableSuspiciousRegions.length > 0
-        ? report.explainableSuspiciousRegions
-        : [
-            {
-              areaName: 'Vùng chữ số tiền giao dịch',
-              description: 'Phông chữ có độ phân giải và mật độ pixel không đồng nhất với phần còn lại của hóa đơn.',
-              severity: 'high' as const,
-            },
-          ];
+      // Chỉ những vùng AI thực sự chỉ ra; AI không chỉ ra vùng nào thì để trống
+      const rawRegions = notReceipt ? [] : report.explainableSuspiciousRegions;
 
       const evidenceFound = rawRegions.map((reg: any) => ({
         severity: reg.severity || 'medium',
@@ -409,18 +407,13 @@ export function createExpressApp() {
         ...report,
         riskLevel,
         riskScore,
+        notAssessedReason,
         summary: notAssessed
-          ? report?.aiAnalyzed
-            ? 'Không đánh giá được: ảnh không đủ rõ để phân tích. Hãy kiểm tra biến động số dư trong ứng dụng ngân hàng.'
-            : 'Không đánh giá được: chưa có AI phân tích ảnh. Hãy kiểm tra biến động số dư trong ứng dụng ngân hàng.'
-          : `Giám định quang học: Chỉ số bất thường ${riskScore}/100. ${
-              riskScore >= 65
-                ? 'Phát hiện nhiều dấu hiệu can thiệp phông chữ và vết ghép số tiền.'
-                : 'Hình ảnh hóa đơn tương đối đồng nhất về mặt đồ họa.'
-            }`,
+          ? `Chưa giám định: ${notAssessedReason} Muốn biết tiền đã chuyển thật hay chưa, hãy kiểm tra biến động số dư trong ứng dụng ngân hàng.`
+          : `AI nhận xét ảnh biên lai: chỉ số bất thường ${riskScore}/100 (${BILL_VERDICT_LABEL[report.verdictClassification] || 'chưa phân loại'}). Đây là nhận xét của AI, không phải kết luận giám định.`,
         signals: notAssessed ? [] : signals,
         // Cảnh báo lấy từ những gì AI thực sự thấy, không dùng câu dựng sẵn
-        redFlags: [...evidenceFound.slice(0, 2).map((ev: any) => ev.description), report.scientificCaveat].filter(Boolean),
+        redFlags: notReceipt ? [] : [...evidenceFound.slice(0, 2).map((ev: any) => ev.description), report.scientificCaveat].filter(Boolean),
         analysisEngine: report?.aiAnalyzed ? 'AI_GEMINI' : 'RULES_ONLY',
         recommendedSteps: [
           'KHÔNG giao hàng hoặc chuyển khoản đối ứng khi chưa thấy tiền về tài khoản ngân hàng thực tế.',
@@ -428,30 +421,23 @@ export function createExpressApp() {
           'Không tin vào hình chụp màn hình hay thông báo từ ứng dụng bên thứ ba.',
         ],
         piiRedacted: false,
+        // Tab bill chỉ xét ảnh: không có thông tin về link, mạo danh thương hiệu hay hối thúc
         threatBreakdown: {
           maliciousUrl: 0,
-          impersonation: sm.fontScore ?? 70,
-          urgency: 40,
-          credentialHarvesting: 20,
+          impersonation: 0,
+          urgency: 0,
+          credentialHarvesting: 0,
           socialEngineering: riskScore,
         },
         evidenceFound,
+        // Phân loại theo kết luận của AI; không có độ tin cậy đo được nên không ghi con số
         threatClassification: {
-          primaryThreat: notAssessed
-            ? 'Chưa đánh giá được biên lai'
-            : riskScore >= 35
-              ? 'Biên Lai Chuyển Tiền Giả Mạo (Fake Bank Receipt)'
-              : 'Chưa thấy dấu hiệu chỉnh sửa rõ ràng',
-          attackVector: 'Chỉnh sửa đồ họa biên lai (Visual Manipulation)',
-          target: 'Hàng hóa / Tiền cọc của người bán',
-          potentialImpact: ['Mất hàng hóa mà không nhận được tiền', 'Bị lừa chuyển khoản ngược'],
-          confidence: 86,
+          primaryThreat: notAssessed ? 'Chưa giám định' : BILL_VERDICT_LABEL[report.verdictClassification] || 'Chưa phân loại',
+          attackVector: notReceipt ? 'Không phải biên lai chuyển khoản' : 'Ảnh biên lai chuyển khoản',
+          target: 'Không xác định',
+          potentialImpact: [],
         },
-        attackChain: [
-          'Đối tượng vờ đặt mua hàng hoặc trả nợ',
-          'Tạo ảnh biên lai chuyển tiền thành công giả bằng công cụ đồ họa',
-          'Gửi ảnh thúc giục nạn nhân giao hàng hoặc hoàn trả tiền thừa',
-        ],
+        attackChain: [],
         assessmentId: `SG-BILL-${randomHex}`,
       };
 

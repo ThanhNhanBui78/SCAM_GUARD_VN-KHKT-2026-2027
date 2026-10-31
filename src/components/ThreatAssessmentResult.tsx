@@ -89,18 +89,21 @@ export const ThreatAssessmentResult: React.FC<ThreatAssessmentResultProps> = ({
     );
   }
 
-  const isHighRisk = result.riskScore >= 70;
-  const isMediumRisk = result.riskScore >= 40 && result.riskScore < 70;
-  
-  const riskColorClass = isHighRisk 
-    ? 'text-rose-400 border-rose-500/30 bg-rose-950/20' 
-    : isMediumRisk 
-      ? 'text-amber-400 border-amber-500/30 bg-amber-950/20' 
+  const notAssessed = !!result.notAssessedReason;
+  const isHighRisk = !notAssessed && result.riskScore >= 70;
+  const isMediumRisk = !notAssessed && result.riskScore >= 40 && result.riskScore < 70;
+
+  const riskColorClass = notAssessed
+    ? 'text-slate-300 border-slate-600/40 bg-slate-900/40'
+    : isHighRisk
+    ? 'text-rose-400 border-rose-500/30 bg-rose-950/20'
+    : isMediumRisk
+      ? 'text-amber-400 border-amber-500/30 bg-amber-950/20'
       : 'text-emerald-400 border-emerald-500/30 bg-emerald-950/20';
 
   // Extract classification elements
   const primaryThreat = result.threatClassification?.primaryThreat || (isHighRisk ? 'PHISHING' : 'LOW RISK');
-  const confidence = result.threatClassification?.confidence || 94;
+  const confidence = result.threatClassification?.confidence;
 
   // Decide indicator flags
   const showUrlIndicator = result.urlAnalysis || (result.threatBreakdown && result.threatBreakdown.maliciousUrl > 50);
@@ -142,18 +145,24 @@ export const ThreatAssessmentResult: React.FC<ThreatAssessmentResultProps> = ({
 
         <div className="space-y-1">
           <p className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
-            {isHighRisk ? '🔴 NGUY HIỂM CAO' : isMediumRisk ? '🟡 NGUY CƠ TRUNG BÌNH' : '🟢 AN TOÀN'}
+            {notAssessed ? '⚪ CHƯA GIÁM ĐỊNH' : isHighRisk ? '🔴 NGUY HIỂM CAO' : isMediumRisk ? '🟡 NGUY CƠ TRUNG BÌNH' : '🟢 AN TOÀN'}
           </p>
-          <p className="text-5xl font-black font-mono tracking-tight text-white py-1">
-            {result.riskScore} <span className="text-xl text-slate-500">/ 100</span>
-          </p>
+          {notAssessed ? (
+            <p className="text-xs font-sans text-slate-300 leading-relaxed py-1">{result.notAssessedReason}</p>
+          ) : (
+            <p className="text-5xl font-black font-mono tracking-tight text-white py-1">
+              {result.riskScore} <span className="text-xl text-slate-500">/ 100</span>
+            </p>
+          )}
         </div>
 
         <div className="border-t border-slate-800/40 pt-3 space-y-1">
           <p className="text-sm font-black text-white font-mono tracking-wider">{primaryThreat}</p>
-          <p className="text-[11px] text-slate-400 font-mono">
-            Assessment Confidence: <span className="text-cyan-400 font-black">{confidence >= 75 ? 'HIGH' : confidence >= 45 ? 'MEDIUM' : 'LOW'}</span>
-          </p>
+          {confidence !== undefined && (
+            <p className="text-[11px] text-slate-400 font-mono">
+              Assessment Confidence: <span className="text-cyan-400 font-black">{confidence >= 75 ? 'HIGH' : confidence >= 45 ? 'MEDIUM' : 'LOW'}</span>
+            </p>
+          )}
           {result.analysisEngine === 'AI_GEMINI' ? (
             <p className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-lg px-2 py-1 mt-2">
               🤖 Kết quả có AI (Gemini) phân tích ngữ cảnh

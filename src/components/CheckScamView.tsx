@@ -21,6 +21,9 @@ import { PiiRedactTab } from './PiiRedactTab';
 import { DomainReputationTab } from './DomainReputationTab';
 import { runClientSideTextAnalysis } from '../utils/clientForensicsEngine';
 
+// Ngữ cảnh đi kèm ảnh bill mẫu: chỉ dùng cho ảnh mẫu, đổi sang ảnh khác thì phải xóa
+const SAMPLE_BILL_CONTEXT = 'Người mua hàng trên mạng gửi ảnh biên lai Techcombank báo đã chuyển 50 triệu và hối thúc giao hàng ngay lập tức.';
+
 type FocusTarget = 'message' | 'url' | 'email' | 'phone';
 type FocusField = 'text' | 'url' | 'sender';
 
@@ -284,6 +287,9 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
       return;
     }
     setError(null);
+    setResult(null);
+    // Ngữ cảnh của ảnh mẫu không thuộc về ảnh người dùng tải lên
+    setFakeBillContext((ctx) => (ctx === SAMPLE_BILL_CONTEXT ? '' : ctx));
     try {
       const { base64, mimeType } = await compressImage(file);
       setFakeBillBase64(base64);
@@ -370,7 +376,7 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
 
       setFakeBillBase64(canvas.toDataURL('image/jpeg', 0.85));
       setFakeBillMime('image/jpeg');
-      setFakeBillContext('Người mua hàng trên mạng gửi ảnh biên lai Techcombank báo đã chuyển 50 triệu và hối thúc giao hàng ngay lập tức.');
+      setFakeBillContext(SAMPLE_BILL_CONTEXT);
     }
   };
 
@@ -792,7 +798,11 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                       />
                       <button
                         type="button"
-                        onClick={() => setFakeBillBase64(null)}
+                        onClick={() => {
+                          setFakeBillBase64(null);
+                          setResult(null);
+                          setFakeBillContext((ctx) => (ctx === SAMPLE_BILL_CONTEXT ? '' : ctx));
+                        }}
                         className="text-xs text-rose-400 hover:underline font-bold cursor-pointer font-mono"
                       >
                         XÓA ẢNH VÀ CHỌN TỆP KHÁC

@@ -31,6 +31,8 @@ export interface FakeBillAnomalyReport {
   }>;
   scientificCaveat: string;
   aiAnalyzed?: boolean;
+  isBankTransferReceipt?: boolean;
+  documentType?: string;
 }
 
 /**
@@ -751,6 +753,7 @@ Hãy phân tích bức ảnh biên lai chuyển tiền / sao kê ngân hàng nà
 ${billContext ? `\nNgữ cảnh người dùng cung cấp (đã che thông tin cá nhân): "${billContext}". Đối chiếu ngữ cảnh này với nội dung ảnh (ngân hàng, số tiền, thời gian) nếu liên quan.\n` : ''}
 
 QUY TẮC BẮT BUỘC:
+0. Trước hết xác định ảnh có phải biên lai / màn hình chuyển khoản thành công của ngân hàng hoặc ví điện tử hay không. Nếu KHÔNG phải (ví dụ hóa đơn mua hàng, phiếu thanh toán siêu thị, ảnh khác), đặt "isBankTransferReceipt": false, ghi loại giấy tờ vào "documentType", "anomalySuspicionScore": 0 và không đánh giá các mục dưới.
 1. KHÔNG khẳng định 100% hóa đơn là thật hay giả (không có thẩm quyền pháp lý tuyệt đối).
 2. Đánh giá 5 khía cạnh cấu trúc bất thường:
    a) Phông chữ & độ sắc nét: Font chữ số tiền, tên người nhận có lệch chuẩn (kerning, weight) so với font hệ thống của ngân hàng?
@@ -761,6 +764,8 @@ QUY TẮC BẮT BUỘC:
 
 Trả về JSON chuẩn xác:
 {
+  "isBankTransferReceipt": boolean,
+  "documentType": string (loại giấy tờ trong ảnh, ví dụ "biên lai chuyển khoản Vietcombank", "hóa đơn siêu thị"),
   "anomalySuspicionScore": number (0-100),
   "verdictClassification": "HIGH_ANOMALY_SUSPECTED" | "MODERATE_ANOMALIES" | "LOW_ANOMALY_CONSISTENT" | "INSUFFICIENT_IMAGE_QUALITY",
   "structuralMetrics": {
@@ -808,30 +813,27 @@ Trả về JSON chuẩn xác:
       const parsed = JSON.parse(stripHanCharacters(rawText));
       const sm = parsed.structuralMetrics || {};
       const insufficientImage = parsed.verdictClassification === 'INSUFFICIENT_IMAGE_QUALITY';
+      const notReceipt = parsed.isBankTransferReceipt === false;
+      const aiScore = Number(parsed.anomalySuspicionScore);
       return {
         aiAnalyzed: true,
-        // Ảnh không đủ chất lượng thì không chấm điểm nghi ngờ (trước đây có thể ra 100 điểm)
-        anomalySuspicionScore: insufficientImage ? 0 : typeof parsed.anomalySuspicionScore === 'number' ? parsed.anomalySuspicionScore : 65,
-        verdictClassification: parsed.verdictClassification || 'MODERATE_ANOMALIES',
+        isBankTransferReceipt: !notReceipt,
+        documentType: typeof parsed.documentType === 'string' ? parsed.documentType : undefined,
+        // Ảnh mờ, không phải biên lai hoặc AI không cho điểm thì không chấm (không tự đặt số)
+        anomalySuspicionScore: insufficientImage || notReceipt || !Number.isFinite(aiScore) ? 0 : Math.max(0, Math.min(100, aiScore)),
+        verdictClassification: notReceipt || !Number.isFinite(aiScore) ? 'INSUFFICIENT_IMAGE_QUALITY' : parsed.verdictClassification || 'MODERATE_ANOMALIES',
+        // Mục AI không trả về thì coi là không phát hiện, không mặc định "có bất thường"
         structuralMetrics: {
-          fontMismatchDetected: sm.fontMismatchDetected ?? true,
-          fontScore: typeof sm.fontScore === 'number' ? sm.fontScore : 70,
-          alignmentIrregularityDetected: sm.alignmentIrregularityDetected ?? true,
-          spacingScore: typeof sm.spacingScore === 'number' ? sm.spacingScore : 65,
-          watermarkSealStatus: sm.watermarkSealStatus || 'BLURRED_SYNTHETIC',
-          compressionArtifactDetected: sm.compressionArtifactDetected ?? true,
-          artifactScore: typeof sm.artifactScore === 'number' ? sm.artifactScore : 75,
-          metadataTemporalConsistency: sm.metadataTemporalConsistency || 'SUSPICIOUS_ROUND_NUMBER',
+          fontMismatchDetected: sm.fontMismatchDetected === true,
+          fontScore: typeof sm.fontScore === 'number' ? sm.fontScore : 0,
+          alignmentIrregularityDetected: sm.alignmentIrregularityDetected === true,
+          spacingScore: typeof sm.spacingScore === 'number' ? sm.spacingScore : 0,
+          watermarkSealStatus: sm.watermarkSealStatus || 'NOT_APPLICABLE',
+          compressionArtifactDetected: sm.compressionArtifactDetected === true,
+          artifactScore: typeof sm.artifactScore === 'number' ? sm.artifactScore : 0,
+          metadataTemporalConsistency: sm.metadataTemporalConsistency || 'LOGICAL',
         },
-        explainableSuspiciousRegions: Array.isArray(parsed.explainableSuspiciousRegions) && parsed.explainableSuspiciousRegions.length > 0
-          ? parsed.explainableSuspiciousRegions
-          : [
-              {
-                areaName: 'Vùng chữ số tiền giao dịch',
-                description: 'Phông chữ có độ phân giải và mật độ pixel không đồng nhất với phần còn lại của hóa đơn.',
-                severity: 'high',
-              },
-            ],
+        explainableSuspiciousRegions: Array.isArray(parsed.explainableSuspiciousRegions) ? parsed.explainableSuspiciousRegions : [],
         scientificCaveat:
           parsed.scientificCaveat ||
           'Khuyến cáo pháp y: Chỉ số bất thường quang học (Optical Anomaly Score) phản ánh các điểm lệch chuẩn pixel và font chữ. Để xác thực giao dịch, hãy kiểm tra biến động số dư trực tiếp trong ứng dụng ngân hàng chính thức của bên thụ hưởng.',
