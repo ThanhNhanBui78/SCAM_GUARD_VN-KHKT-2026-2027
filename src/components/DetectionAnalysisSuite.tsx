@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playSuccessChime, playAlertWarning } from '../utils/audioEffects';
+import { lookupDomainAge, describeDomainAge } from '../services/domainAgeService';
 import confetti from 'canvas-confetti';
 import mascotShield from '../assets/images/mascot_shield_transparent.png';
 
@@ -438,12 +439,12 @@ export const DetectionAnalysisSuite: React.FC<DetectionAnalysisSuiteProps> = ({
   const [calculatedScore, setCalculatedScore] = useState<any | null>(null);
   const [scoreLoading, setScoreLoading] = useState<boolean>(false);
 
-  const calculateScamScore = () => {
+  const calculateScamScore = async () => {
     if (!scoreQuery.trim()) return;
     setScoreLoading(true);
     setCalculatedScore(null);
 
-    setTimeout(() => {
+    {
       const q = scoreQuery.toLowerCase().trim();
       let score = 20; // Safe base
       let details: string[] = [];
@@ -471,11 +472,13 @@ export const DetectionAnalysisSuite: React.FC<DetectionAnalysisSuiteProps> = ({
         details.push('Không bắt buộc giao thức bảo mật HTTPS / Không sử dụng chứng chỉ SSL mã hóa');
       }
 
-      // WHOIS simulate
-      const isNew = Math.random() > 0.3;
-      if (isNew) {
+      // Tuổi tên miền: tra RDAP thật trên máy chủ; không tra được thì ghi rõ, không cộng điểm
+      const age = await lookupDomainAge(q);
+      if (age.available && age.ageDays !== undefined && age.ageDays < 30) {
         score += 10;
-        details.push('Tên miền mới đăng ký dưới 30 ngày (Độ rủi ro mạo danh cực cao)');
+        details.push(`Tên miền mới đăng ký: ${describeDomainAge(age)}`);
+      } else {
+        details.push(`Tuổi tên miền: ${describeDomainAge(age)}`);
       }
 
       const finalScore = Math.min(99, score);
@@ -483,14 +486,14 @@ export const DetectionAnalysisSuite: React.FC<DetectionAnalysisSuiteProps> = ({
         query: scoreQuery,
         score: finalScore,
         level: finalScore >= 70 ? 'NGUY HIỂM CAO' : (finalScore >= 40 ? 'NGHI NGỜ' : 'KHÁ AN TOÀN'),
-        details: details.length > 0 ? details : ['Chưa ghi nhận phản hồi xấu từ cơ sở dữ liệu quốc gia', 'Chứng chỉ SSL hợp lệ', 'Tên miền đăng ký lâu năm'],
+        details: details.length > 0 ? details : ['Không phát hiện dấu hiệu nào theo các quy tắc kiểm tra. Điều này không có nghĩa là tên miền an toàn.'],
         levenshtein: typosquatMatch ? `Khoảng cách Levenshtein với thương hiệu gốc ${typosquatMatch} rất gần.` : 'Không phát hiện dấu hiệu giả mạo tên thương hiệu chính chủ.'
       });
 
       playSuccessChime();
       onEarnXp(10);
       setScoreLoading(false);
-    }, 1200);
+    }
   };
 
   // -------------------- 6. SECOND OPINION STATES --------------------
@@ -548,11 +551,7 @@ export const DetectionAnalysisSuite: React.FC<DetectionAnalysisSuiteProps> = ({
 
   // -------------------- 8. COMMUNITY BLACKLIST STATES & DATA --------------------
   const [blacklistSearch, setBlacklistSearch] = useState<string>('');
-  const [blacklist, setBlacklist] = useState([
-    { id: 'b-1', target: '024.7302.2626', type: 'Số điện thoại', reason: 'Giả danh Công An điều tra dọa rửa tiền', upvotes: 142, downvotes: 2, date: '10 phút trước', verified: true },
-    { id: 'b-2', target: 'STK: 1028392109 (Vingroup-pay.vip)', type: 'Tài khoản ngân hàng', reason: 'Nhận tiền đa cấp đầu tư ảo hoàn nhiệm vụ', upvotes: 98, downvotes: 1, date: '1 giờ trước', verified: true },
-    { id: 'b-3', target: 'http://vietcombank-security-key.online', type: 'Liên kết website', reason: 'Trang phishing đăng nhập lấy OTP Vietcombank', upvotes: 312, downvotes: 0, date: '2 giờ trước', verified: true }
-  ]);
+  const [blacklist, setBlacklist] = useState<any[]>([]);
   const [newReportTarget, setNewReportTarget] = useState('');
   const [newReportType, setNewReportType] = useState('Số điện thoại');
   const [newReportReason, setNewReportReason] = useState('');
@@ -1444,10 +1443,10 @@ export const DetectionAnalysisSuite: React.FC<DetectionAnalysisSuiteProps> = ({
                 <div>
                   <h2 className="text-xl font-black text-white flex items-center space-x-2">
                     <Shield className="w-5 h-5 text-cyan-400" />
-                    <span>CSDL BLACKLIST QUỐC GIA (CROWDSOURCED SCAM DATABASE)</span>
+                    <span>BÁO CÁO CỦA NGƯỜI DÙNG (CHƯA XÁC MINH)</span>
                   </h2>
                   <p className="text-xs text-slate-300 mt-1">
-                    Tra cứu chéo hoặc đóng góp số điện thoại, số tài khoản, tên miền lừa đảo để cộng đồng cùng kiểm duyệt và ngăn chặn.
+                    Danh sách này chỉ gồm báo cáo bạn gửi trong phiên này, lưu trên trình duyệt, chưa ai xác minh. Đây không phải cơ sở dữ liệu của Bộ Công an hay NCSC.
                   </p>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, googleProvider, facebookProvider, githubProvider, db } from '../firebase';
 import { UserAccount, UserProfile, ExperienceMode } from '../types';
+import { getFallbackAvatar } from '../utils/avatarFallback';
 
 export function mapFirebaseUserToAccount(
   fbUser: FirebaseUser,
@@ -30,7 +31,8 @@ export function mapFirebaseUserToAccount(
     avatarUrl:
       fbUser.photoURL ||
       profileData?.avatarUrl ||
-      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fbUser.displayName || fbUser.email || 'SG')}&backgroundColor=0f172a,1e293b`,
+      // Vẽ ảnh chữ cái đầu ngay trên máy, không gửi tên/email sang dịch vụ bên thứ ba
+      getFallbackAvatar(fbUser.displayName || 'SG'),
     provider: (fbUser.providerData[0]?.providerId.replace('.com', '') as any) || 'firebase',
     createdAt: profileData?.createdAt || new Date().toISOString(),
   };
@@ -103,7 +105,7 @@ export async function registerWithFirebase(params: {
       streakDays: 1,
       completedScenarios: [],
       trustedContacts: [],
-      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(params.name)}&backgroundColor=0f172a,1e293b`,
+      avatarUrl: getFallbackAvatar(params.name),
       provider: 'firebase',
       createdAt: new Date().toISOString(),
     };

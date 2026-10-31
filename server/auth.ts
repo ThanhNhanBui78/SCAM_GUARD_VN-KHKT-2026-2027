@@ -1,4 +1,5 @@
 import { UserAccount, UserProfile, ExperienceMode, TrustedContact } from '../src/types';
+import { getFallbackAvatar } from '../src/utils/avatarFallback';
 import crypto from 'crypto';
 
 // In-memory user database
@@ -228,7 +229,7 @@ export function registerUser(params: {
     streakDays: 1,
     completedScenarios: [],
     trustedContacts: [],
-    avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=0f172a,1e293b,334155`,
+    avatarUrl: getFallbackAvatar(cleanName),
     provider: 'local',
     createdAt: new Date().toISOString(),
   };
@@ -417,7 +418,7 @@ export function syncFirebaseUser(params: {
     streakDays: params.profile?.streakDays ?? 1,
     completedScenarios: params.profile?.completedScenarios || ['bank-lockout-alert'],
     trustedContacts: params.profile?.trustedContacts || [],
-    avatarUrl: params.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(params.name || 'SG')}&backgroundColor=0f172a,1e293b`,
+    avatarUrl: params.avatarUrl || getFallbackAvatar(params.name || 'SG'),
     provider: (params.provider as any) || 'firebase',
     createdAt: new Date().toISOString(),
     ...params.profile,

@@ -4,9 +4,9 @@ import { CommunitySurveySubmission } from '../types';
 export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
   {
     id: 'SURVEY-REAL-001',
-    participantName: 'Vũ Minh Trí',
+    participantName: 'Người tham gia ghi danh #DD-01',
     isAnonymous: false,
-    anonymousCode: '',
+    anonymousCode: 'DD-01',
     schoolName: 'THPT Nguyễn Khuyến',
     className: '10L1',
     demographicGroup: 'STUDENT',
@@ -41,7 +41,7 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
         after: { T: 0.15, A: 0.14, G: 0.12, E: 0.16, C: 0.14, R: 0.11 }
       }
     },
-    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (Đích danh: Vũ Minh Trí, 10L1). Phản xạ ban đầu còn mắc nhiều lỗi.',
+    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (phiếu ghi danh DD-01, đã ẩn họ tên). Phản xạ ban đầu còn mắc nhiều lỗi.',
     createdAt: '2026-09-17T07:15:31.000Z'
   },
   {
@@ -88,9 +88,9 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
   },
   {
     id: 'SURVEY-REAL-003',
-    participantName: 'Pham gia toan',
+    participantName: 'Người tham gia ghi danh #DD-02',
     isAnonymous: false,
-    anonymousCode: '',
+    anonymousCode: 'DD-02',
     schoolName: 'THPT Nguyễn Khuyến',
     className: 'Lop 10L1',
     demographicGroup: 'STUDENT',
@@ -125,7 +125,7 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
         after: { T: 0.14, A: 0.12, G: 0.11, E: 0.13, C: 0.12, R: 0.10 }
       }
     },
-    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (Pham gia toan, 10L1).',
+    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (phiếu ghi danh DD-02, đã ẩn họ tên).',
     createdAt: '2026-09-17T07:15:42.000Z'
   },
   {
@@ -382,9 +382,9 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
   },
   {
     id: 'SURVEY-REAL-010',
-    participantName: 'Phan Nhật Minh',
+    participantName: 'Người tham gia ghi danh #DD-03',
     isAnonymous: false,
-    anonymousCode: '',
+    anonymousCode: 'DD-03',
     schoolName: 'Phổ Thông Năng Khiếu',
     className: '11 Chuyên Tin',
     demographicGroup: 'STUDENT',
@@ -419,7 +419,7 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
         after: { T: 0.08, A: 0.07, G: 0.06, E: 0.08, C: 0.07, R: 0.05 }
       }
     },
-    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (Phan Nhật Minh, PTNK 11 Tin).',
+    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (phiếu ghi danh DD-03, đã ẩn họ tên).',
     createdAt: '2026-09-17T07:17:39.000Z'
   },
   {
@@ -634,9 +634,9 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
   },
   {
     id: 'SURVEY-REAL-016',
-    participantName: 'Lê Hoàng Yến',
+    participantName: 'Người tham gia ghi danh #DD-04',
     isAnonymous: false,
-    anonymousCode: '',
+    anonymousCode: 'DD-04',
     schoolName: 'THPT Lê Hồng Phong',
     className: '11A1',
     demographicGroup: 'STUDENT',
@@ -671,7 +671,7 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
         after: { T: 0.12, A: 0.10, G: 0.09, E: 0.11, C: 0.10, R: 0.08 }
       }
     },
-    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (Lê Hoàng Yến, Lê Hồng Phong 11A1).',
+    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (phiếu ghi danh DD-04, đã ẩn họ tên).',
     createdAt: '2026-09-17T07:18:51.000Z'
   },
   {
@@ -1012,9 +1012,9 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
   },
   {
     id: 'SURVEY-REAL-025',
-    participantName: 'Trần Bảo Ngọc',
+    participantName: 'Người tham gia ghi danh #DD-05',
     isAnonymous: false,
-    anonymousCode: '',
+    anonymousCode: 'DD-05',
     schoolName: 'THPT Nguyễn Khuyến',
     className: '11B2',
     demographicGroup: 'STUDENT',
@@ -1049,7 +1049,7 @@ export const REAL_EXTERNAL_SURVEYS: CommunitySurveySubmission[] = [
         after: { T: 0.14, A: 0.12, G: 0.11, E: 0.13, C: 0.12, R: 0.10 }
       }
     },
-    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (Trần Bảo Ngọc, 11B2).',
+    feedbackNote: 'Dữ liệu khảo sát thu thập từ Google Forms trong giai đoạn tiền khảo nghiệm trước khi ứng dụng chính thức vận hành (phiếu ghi danh DD-05, đã ẩn họ tên).',
     createdAt: '2026-09-17T07:20:39.000Z'
   },
   {

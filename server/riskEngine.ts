@@ -30,6 +30,7 @@ export interface FakeBillAnomalyReport {
     severity: 'critical' | 'high' | 'medium';
   }>;
   scientificCaveat: string;
+  aiAnalyzed?: boolean;
 }
 
 /**
@@ -531,8 +532,9 @@ export async function inspectFakeBillAnomalies(params: {
   const mime = params.mimeType || 'image/png';
   const base64Data = params.base64Image.replace(/^data:image\/\w+;base64,/, '');
 
-  let anomalyScore = 45;
-  let verdict: FakeBillAnomalyReport['verdictClassification'] = 'MODERATE_ANOMALIES';
+  // Không có AI phân tích ảnh thì không đánh giá được: trả 0 điểm và nói rõ, không đưa ra con số giả định
+  let anomalyScore = 0;
+  let verdict: FakeBillAnomalyReport['verdictClassification'] = 'INSUFFICIENT_IMAGE_QUALITY';
   let fontMismatch = false;
   let alignmentIrregular = false;
   let watermarkStatus: FakeBillAnomalyReport['structuralMetrics']['watermarkSealStatus'] = 'NOT_APPLICABLE';
@@ -600,10 +602,13 @@ Trả về JSON chuẩn xác:
       if (rawText.startsWith('```')) {
         rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
       }
-      const parsed = JSON.parse(rawText);
+      const parsed = JSON.parse(stripHanCharacters(rawText));
       const sm = parsed.structuralMetrics || {};
+      const insufficientImage = parsed.verdictClassification === 'INSUFFICIENT_IMAGE_QUALITY';
       return {
-        anomalySuspicionScore: typeof parsed.anomalySuspicionScore === 'number' ? parsed.anomalySuspicionScore : 65,
+        aiAnalyzed: true,
+        // Ảnh không đủ chất lượng thì không chấm điểm nghi ngờ (trước đây có thể ra 100 điểm)
+        anomalySuspicionScore: insufficientImage ? 0 : typeof parsed.anomalySuspicionScore === 'number' ? parsed.anomalySuspicionScore : 65,
         verdictClassification: parsed.verdictClassification || 'MODERATE_ANOMALIES',
         structuralMetrics: {
           fontMismatchDetected: sm.fontMismatchDetected ?? true,
@@ -633,14 +638,15 @@ Trả về JSON chuẩn xác:
     console.error('Gemini vision analysis handled with baseline anomaly evaluator.', err);
   }
 
-  // Fallback anomaly inspection
+  // Fallback: không có AI phân tích ảnh
   suspiciousRegions.push({
-    areaName: 'Vùng số tiền & tên người nhận',
-    description: 'Cần kiểm tra độ sắc nét của viền chữ so với nền biên lai.',
+    areaName: 'Chưa phân tích được ảnh',
+    description: 'Chưa có AI phân tích ảnh nên hệ thống không đánh giá được biên lai này. Hãy kiểm tra biến động số dư trong ứng dụng ngân hàng.',
     severity: 'medium',
   });
 
   return {
+    aiAnalyzed: false,
     anomalySuspicionScore: anomalyScore,
     verdictClassification: verdict,
     structuralMetrics: {

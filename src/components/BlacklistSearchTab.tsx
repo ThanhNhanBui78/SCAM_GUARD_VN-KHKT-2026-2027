@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, ShieldAlert, CheckCircle2, PlusCircle, AlertTriangle } from 'lucide-react';
+import { Search, ShieldAlert, PlusCircle, AlertTriangle } from 'lucide-react';
+import { OFFICIAL_LOOKUP_LINKS } from '../data/officialLookup';
 
 export const BlacklistSearchTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,38 +34,11 @@ export const BlacklistSearchTab: React.FC = () => {
       }
       throw new Error('API non-JSON or offline');
     } catch (err) {
-      console.warn('Network error, engaging local blacklist database:', err);
-      const cleanQ = searchQuery.trim().replace(/[^0-9a-zA-Z]/g, '');
-      const localKnown = [
-        {
-          identifier: '02473022626',
-          type: 'phone',
-          riskLevel: 'EXTREME',
-          reportsCount: 142,
-          lastReported: '2026-09-28',
-          tags: ['Mạo danh Công an', 'Đe dọa rửa tiền', 'Ép chuyển tiền bảo lãnh'],
-          details: 'Đối tượng tự xưng là cán bộ Công An điều tra vụ án ma túy, yêu cầu kết bạn Zalo và gửi lệnh bắt giả mạo.'
-        },
-        {
-          identifier: '1028392109',
-          type: 'stk',
-          bankName: 'Vietcombank',
-          riskLevel: 'EXTREME',
-          reportsCount: 89,
-          lastReported: '2026-09-27',
-          tags: ['Tài khoản rác', 'Rửa tiền', 'Nhận tiền cọc lừa đảo'],
-          details: 'Tài khoản mạo danh cơ quan tư pháp nhận tiền bảo lãnh án treo khống.'
-        },
-      ];
-      const found = localKnown.find((k) => k.identifier.includes(cleanQ) || cleanQ.includes(k.identifier));
-      if (found) {
-        setBlacklistResult({ found: true, data: found });
-      } else {
-        setBlacklistResult({
-          found: false,
-          message: `Chưa có báo cáo vi phạm nào về [${cleanQ}] trong cơ sở dữ liệu NCSC & ScamGuard. Tuy nhiên bạn vẫn cần cẩn trọng xác minh độc lập trước khi giao dịch.`
-        });
-      }
+      console.warn('Blacklist API unavailable:', err);
+      setBlacklistResult({
+        found: false,
+        message: 'Không kết nối được máy chủ ScamGuard nên chưa tra được. Hãy tự tra cứu ở các nguồn bên dưới.'
+      });
     } finally {
       setBlacklistSearching(false);
     }
@@ -95,7 +69,7 @@ export const BlacklistSearchTab: React.FC = () => {
 
       const data = await res.json();
       if (data.success) {
-        setReportSuccessMsg('✓ Gửi báo cáo thành công! Ban quản trị sẽ tiến hành thẩm định và đưa vào danh sách đen công đồng.');
+        setReportSuccessMsg('✓ Đã ghi nhận báo cáo (chưa xác minh). Nếu bạn là nạn nhân, hãy trình báo cơ quan công an nơi gần nhất.');
         setReportIdentifier('');
         setReportBank('');
         setReportDesc('');
@@ -116,7 +90,7 @@ export const BlacklistSearchTab: React.FC = () => {
           <span>Tra Cứu Danh Sách Đen SĐT & Số Tài Khoản Ngân Hàng:</span>
         </label>
         <p className="text-xs text-slate-400">
-          Tổng hợp dữ liệu thời gian thực từ Bộ Công An, NCSC và phản ánh trực tiếp từ cộng đồng nạn nhân lừa đảo trực tuyến tại Việt Nam.
+          Chỉ tra trong các báo cáo do người dùng ScamGuard gửi (chưa xác minh). ScamGuard không kết nối dữ liệu của Bộ Công an, NCSC hay nhà mạng.
         </p>
       </div>
 
@@ -144,31 +118,42 @@ export const BlacklistSearchTab: React.FC = () => {
           {blacklistResult.found ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-black border border-rose-500/50 font-mono">
-                  {blacklistResult.data.riskLevel === 'EXTREME'
-                    ? '🚨 NGUY HIỂM CỰC ĐỘ'
-                    : '⚠️ ĐÃ BỊ BÁO CÁO VI PHẠM'}
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-black border border-amber-500/50 font-mono">
+                  ⚠️ CÓ NGƯỜI DÙNG BÁO CÁO – CHƯA XÁC MINH
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium font-mono">
-                  Nguồn: {blacklistResult.data.source}
+                  Nguồn: báo cáo người dùng ScamGuard
                 </span>
               </div>
               <p className="text-xs sm:text-sm font-bold text-white font-mono">
                 {blacklistResult.data.identifier} {blacklistResult.data.bankName ? `(${blacklistResult.data.bankName})` : '(Số điện thoại)'}
               </p>
               <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-sans">
-                {blacklistResult.data.description}
+                {blacklistResult.data.details}
               </p>
               <p className="text-[10px] text-slate-500 font-mono">
-                Số lượt bị nạn nhân phản ánh: {blacklistResult.data.reportsCount} báo cáo
+                Số báo cáo: {blacklistResult.data.reportsCount} · Gần nhất: {blacklistResult.data.lastReported}
               </p>
+              {blacklistResult.note && (
+                <p className="text-[11px] text-amber-300 font-sans">{blacklistResult.note}</p>
+              )}
             </div>
           ) : (
-            <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold font-mono">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400" />
-              <span>{blacklistResult.message || 'Không phát hiện số tài khoản/số điện thoại này nằm trong danh sách đen quốc gia.'}</span>
+            <div className="flex items-start space-x-2 text-amber-300 text-xs font-bold font-sans">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-300" />
+              <span>{blacklistResult.message}</span>
             </div>
           )}
+          <div className="pt-2 border-t border-slate-800 space-y-1.5">
+            <p className="text-[10px] text-slate-500 font-bold uppercase font-mono">Tự tra cứu ở nguồn chính thức:</p>
+            {OFFICIAL_LOOKUP_LINKS.map((link) => (
+              <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
+                className="block text-xs text-cyan-400 hover:text-cyan-300 underline">
+                {link.name}
+              </a>
+            ))}
+            <p className="text-[11px] text-slate-400">Ứng dụng nTrust (Hiệp hội An ninh mạng quốc gia) tra được số điện thoại và số tài khoản.</p>
+          </div>
         </div>
       )}
 

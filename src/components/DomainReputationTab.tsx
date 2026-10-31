@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { playSuccessChime, playRewardTrophy } from '../utils/audioEffects';
+import { lookupDomainAge, describeDomainAge } from '../services/domainAgeService';
+import { OFFICIAL_LOOKUP_LINKS, SELF_CHECK_STEPS, detectIdentifierKind } from '../data/officialLookup';
 
 // Heuristic Levenshtein Distance for Typosquatting
 function getLevenshteinDistance(a: string, b: string): number {
@@ -136,14 +138,14 @@ export const DomainReputationTab: React.FC = () => {
   const [osintLoading, setOsintLoading] = useState(false);
 
   // Handle Domain Reputation Calculation
-  const handleCheckReputation = (e: React.FormEvent) => {
+  const handleCheckReputation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!domainInput.trim()) return;
 
     setRepLoading(true);
     setRepResult(null);
 
-    setTimeout(() => {
+    {
       let rawDomain = domainInput.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
       let domainParts = rawDomain.split('.');
       let cleanDomain = domainParts.length > 1 ? domainParts[domainParts.length - 2] : rawDomain;
@@ -171,25 +173,28 @@ export const DomainReputationTab: React.FC = () => {
       if (isBadTLD) riskScore += 25;
       if (!isHttps) riskScore += 10;
 
+      const age = await lookupDomainAge(rawDomain);
+      const isNewDomain = age.available && age.ageDays !== undefined && age.ageDays < 30;
+      if (isNewDomain) riskScore += 10;
+
       riskScore = Math.min(riskScore, 99);
 
       setRepResult({
         domain: rawDomain,
         riskScore,
         riskLevel: riskScore >= 70 ? 'HIGH' : (riskScore >= 40 ? 'MEDIUM' : 'SAFE'),
-        whoisAge: riskScore > 50 ? '3 ngày' : '5 năm, 120 ngày',
-        sslCertAge: riskScore > 40 ? '2 ngày (Tự phát hành/Let\'s Encrypt)' : '360 ngày (DigiCert High Assurance EV CA)',
+        whoisAge: describeDomainAge(age),
+        httpsStatus: isHttps ? 'Có dùng HTTPS (chưa kiểm tra chứng chỉ)' : 'Không dùng HTTPS',
         isTyposquatting,
         closestBrand: isTyposquatting ? closestBrand.toUpperCase() : null,
         levenshtein: minDistance,
-        scamHistoryFound: riskScore > 40,
         explanation: isTyposquatting
           ? `CẢNH BÁO: Phát hiện tên miền có độ lệch khoảng cách ký tự cực ngắn (${minDistance} ký tự) so với thương hiệu chính thức "${closestBrand.toUpperCase()}". Đây là hành vi mạo danh (Typosquatting) cực kỳ nguy hiểm để dụ nạn nhân nhầm lẫn.`
           : 'Tên miền chưa phát hiện tín hiệu mạo danh thương hiệu trực diện, tuy nhiên vẫn cần cảnh giác với nguồn phát tán.'
       });
       setRepLoading(false);
       playSuccessChime();
-    }, 1200);
+    }
   };
 
   // Handle Note Voting
@@ -302,35 +307,17 @@ export const DomainReputationTab: React.FC = () => {
     }, 2000);
   };
 
-  // Simulate OSINT Cross-check Tool
+  // Hướng dẫn tự tra cứu SĐT / STK / email. Ứng dụng KHÔNG tự tra hay chấm điểm người khác:
+  // không có cổng dữ liệu công khai, và thông tin thuê bao, tài khoản là dữ liệu cá nhân.
   const handleOSINTCheck = (e: React.FormEvent) => {
     e.preventDefault();
     if (!osintQuery.trim()) return;
-
-    setOsintLoading(true);
-    setOsintResult(null);
-
-    setTimeout(() => {
-      const q = osintQuery.trim();
-      const isRisk = q.startsWith('098') || q.startsWith('190') || q.includes('888');
-      
-      setOsintResult({
-        identifier: q,
-        trustScore: isRisk ? 15 : 92,
-        classification: isRisk ? 'HIGHLY_DANGEROUS' : 'CLEAN_HISTORY',
-        scannedSources: [
-          { name: 'Hệ thống tra cứu NCSC (Trung tâm Giám sát An toàn không gian mạng Quốc gia)', status: isRisk ? 'Có lịch sử trục lợi ngân dịch' : 'An toàn' },
-          { name: 'Cục Điện thoại & Đầu số Rác nhà mạng Viễn thông', status: isRisk ? 'Sim kích hoạt rác không chính chủ (mới kích hoạt 15 ngày)' : 'SĐT đã định danh' },
-          { name: 'Crowdsourced Scam Database (Cộng đồng ScamGuard)', status: isRisk ? '18 lượt tố cáo lừa đảo tuyển dụng việc làm' : 'Chưa có báo cáo' },
-          { name: 'Cổng thông tin Doanh nghiệp & Mã số thuế Quốc gia', status: 'Không liên kết với doanh nghiệp hợp pháp nào' }
-        ],
-        riskDetails: isRisk 
-          ? 'Cảnh báo: Đối tượng xuất hiện với mật độ dày đặc trong các hội nhóm báo cáo đòi nợ thuê ảo và giả danh shipper lừa đảo quẹt thẻ cào.'
-          : 'Dữ liệu tra cứu sạch. Đối tượng chưa bị đưa vào danh sách đen báo cáo.'
-      });
-      setOsintLoading(false);
-      playSuccessChime();
-    }, 1800);
+    const kind = detectIdentifierKind(osintQuery);
+    setOsintResult({
+      identifier: osintQuery.trim(),
+      kindLabel: { phone: 'Số điện thoại', stk: 'Số tài khoản ngân hàng', email: 'Email', other: 'Chưa nhận dạng được' }[kind],
+      steps: SELF_CHECK_STEPS[kind],
+    });
   };
 
   return (
@@ -434,17 +421,17 @@ export const DomainReputationTab: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
                   <div className="space-y-1">
-                    <p className="text-[10px] text-slate-500 font-bold">• TUỔI ĐĂNG KÝ (WHOIS AGE):</p>
+                    <p className="text-[10px] text-slate-500 font-bold">• TUỔI TÊN MIỀN (TRA RDAP):</p>
                     <p className="text-slate-200 flex items-center space-x-1">
                       <Clock className="w-3.5 h-3.5 text-amber-400" />
                       <span>{repResult.whoisAge}</span>
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] text-slate-500 font-bold">• CHỨNG CHỈ BẢO MẬT (SSL AGE):</p>
+                    <p className="text-[10px] text-slate-500 font-bold">• GIAO THỨC:</p>
                     <p className="text-slate-200 flex items-center space-x-1">
                       <Lock className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{repResult.sslCertAge}</span>
+                      <span>{repResult.httpsStatus}</span>
                     </p>
                   </div>
                   {repResult.isTyposquatting && (
@@ -845,10 +832,10 @@ export const DomainReputationTab: React.FC = () => {
             <div>
               <h3 className="text-base font-black text-white flex items-center space-x-2">
                 <Search className="w-5 h-5 text-cyan-400 animate-pulse" />
-                <span>OSINT CROSS-CHECK TOOL (TRA CỨU CHÉO NGUỒN CÔNG KHAI)</span>
+                <span>HƯỚNG DẪN TỰ TRA CỨU SĐT / STK / EMAIL</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Nhập số điện thoại, số tài khoản ngân hàng thụ hưởng, hoặc email lạ để hệ thống tự động quy vấn chéo các cổng dữ liệu NCSC, nhà mạng viễn thông, và feed tố cáo toàn diện.
+                ScamGuard không tự tra cứu hay chấm điểm số điện thoại, tài khoản của người khác: không có cổng dữ liệu công khai, và đây là dữ liệu cá nhân. Nhập thông tin để xem cách tự kiểm tra ở nguồn chính thức.
               </p>
             </div>
 
@@ -868,12 +855,12 @@ export const DomainReputationTab: React.FC = () => {
                 {osintLoading ? (
                   <>
                     <Cpu className="w-4 h-4 animate-spin" />
-                    <span>DANG TRUY VAN...</span>
+                    <span>ĐANG XỬ LÝ...</span>
                   </>
                 ) : (
                   <>
                     <Search className="w-4 h-4" />
-                    <span>TRA CỨU CHÉO</span>
+                    <span>XEM CÁCH KIỂM TRA</span>
                   </>
                 )}
               </button>
@@ -883,45 +870,35 @@ export const DomainReputationTab: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className={`p-5 rounded-2xl border space-y-4 ${
-                  osintResult.classification === 'HIGHLY_DANGEROUS'
-                    ? 'bg-rose-950/20 border-rose-500/30'
-                    : 'bg-emerald-950/20 border-emerald-500/30'
-                }`}
+                className="p-5 rounded-2xl border space-y-4 bg-slate-950/40 border-slate-700"
               >
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div>
-                    <p className="text-[10px] font-mono font-bold text-slate-500">ĐỐI TƯỢNG TRA CỨU:</p>
-                    <p className="text-sm font-black font-mono text-cyan-400">{osintResult.identifier}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-mono font-bold text-slate-500">ĐIỂM ĐỘ TIN CẬY (TRUST SCORE):</p>
-                    <p className={`text-xl font-black font-mono ${osintResult.trustScore < 40 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {osintResult.trustScore}/100
-                    </p>
-                  </div>
+                <div className="border-b border-slate-800 pb-3">
+                  <p className="text-[10px] font-mono font-bold text-slate-500">THÔNG TIN CẦN KIỂM TRA ({osintResult.kindLabel}):</p>
+                  <p className="text-sm font-black font-mono text-cyan-400">{osintResult.identifier}</p>
                 </div>
 
                 <div className="space-y-3 font-sans text-xs">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase font-mono">Báo cáo chéo từ các cổng nguồn:</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase font-mono">Cách tự kiểm tra:</p>
+                  <ul className="list-disc pl-5 space-y-1.5 text-slate-300">
+                    {osintResult.steps.map((step: string, idx: number) => (
+                      <li key={idx}>{step}</li>
+                    ))}
+                  </ul>
+
+                  <p className="text-[10px] text-slate-500 font-bold uppercase font-mono">Nguồn tra cứu chính thức:</p>
                   <div className="space-y-2">
-                    {osintResult.scannedSources.map((src: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-2.5 rounded-lg bg-slate-950 border border-slate-850 text-xs">
-                        <span className="text-slate-300 font-sans">{src.name}</span>
-                        <span className={`font-mono text-[11px] font-black ${
-                          src.status.includes('An toàn') || src.status.includes('Chưa có')
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                        }`}>
-                          {src.status}
-                        </span>
-                      </div>
+                    {OFFICIAL_LOOKUP_LINKS.map((link) => (
+                      <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="block p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-500/50">
+                        <span className="text-cyan-400 font-bold underline">{link.name}</span>
+                        <span className="block text-slate-400 mt-0.5">{link.use}</span>
+                      </a>
                     ))}
                   </div>
 
-                  <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-850 text-xs leading-relaxed">
-                    <p className="font-bold text-white mb-1 font-mono">Lưu ý rủi ro:</p>
-                    <p className="text-slate-300">{osintResult.riskDetails}</p>
+                  <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs leading-relaxed">
+                    <p className="font-bold text-white mb-1">Nếu đã chuyển tiền hoặc lộ mã OTP:</p>
+                    <p className="text-slate-300">Gọi ngay tổng đài chính thức của ngân hàng để khóa tài khoản, rồi trình báo cơ quan công an nơi gần nhất.</p>
                   </div>
                 </div>
               </motion.div>

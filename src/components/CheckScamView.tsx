@@ -89,7 +89,7 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
         'Đối phương tự xưng là cán bộ Công An Quận 1 gọi điện hù dọa bảo số tài khoản có dính líu đến đường dây rửa tiền xuyên quốc gia, yêu cầu chuyển 50 triệu tiền bảo lãnh án treo vào số tài khoản.'
       );
       setUrlInput('');
-      setSenderInput('024.7302.2626 / STK: 1028392109 - Công An Quận 1');
+      setSenderInput('024.xxxx.xxxx / STK: 10xxxxxxxx - tự xưng Công An Quận 1');
       setChannel('phone');
     }
   };

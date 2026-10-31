@@ -355,6 +355,8 @@ export function createExpressApp() {
         metadataTemporalConsistency: 'SUSPICIOUS_ROUND_NUMBER',
       };
       const riskScore = typeof report?.anomalySuspicionScore === 'number' ? report.anomalySuspicionScore : 65;
+      // Ảnh không đọc được hoặc chưa có AI: nói rõ là không đánh giá được, không đưa cảnh báo dựng sẵn
+      const notAssessed = report?.verdictClassification === 'INSUFFICIENT_IMAGE_QUALITY';
       let riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE' = 'LOW';
       if (riskScore >= 65) riskLevel = 'HIGH';
       else if (riskScore >= 35) riskLevel = 'MEDIUM';
@@ -406,17 +408,19 @@ export function createExpressApp() {
         ...report,
         riskLevel,
         riskScore,
-        summary: `Giám định quang học: Chỉ số bất thường ${riskScore}/100. ${
-          riskScore >= 65
-            ? 'Phát hiện nhiều dấu hiệu can thiệp phông chữ và vết ghép số tiền.'
-            : 'Hình ảnh hóa đơn tương đối đồng nhất về mặt đồ họa.'
-        }`,
-        signals,
-        redFlags: [
-          'Vùng số tiền có độ sắc nét khác biệt với mẫu phôi ngân hàng',
-          'Biến động số dư chưa ghi nhận trên ứng dụng ngân hàng thực tế',
-          report.scientificCaveat,
-        ],
+        summary: notAssessed
+          ? report?.aiAnalyzed
+            ? 'Không đánh giá được: ảnh không đủ rõ để phân tích. Hãy kiểm tra biến động số dư trong ứng dụng ngân hàng.'
+            : 'Không đánh giá được: chưa có AI phân tích ảnh. Hãy kiểm tra biến động số dư trong ứng dụng ngân hàng.'
+          : `Giám định quang học: Chỉ số bất thường ${riskScore}/100. ${
+              riskScore >= 65
+                ? 'Phát hiện nhiều dấu hiệu can thiệp phông chữ và vết ghép số tiền.'
+                : 'Hình ảnh hóa đơn tương đối đồng nhất về mặt đồ họa.'
+            }`,
+        signals: notAssessed ? [] : signals,
+        // Cảnh báo lấy từ những gì AI thực sự thấy, không dùng câu dựng sẵn
+        redFlags: [...evidenceFound.slice(0, 2).map((ev: any) => ev.description), report.scientificCaveat].filter(Boolean),
+        analysisEngine: report?.aiAnalyzed ? 'AI_GEMINI' : 'RULES_ONLY',
         recommendedSteps: [
           'KHÔNG giao hàng hoặc chuyển khoản đối ứng khi chưa thấy tiền về tài khoản ngân hàng thực tế.',
           'Mở ứng dụng Mobile Banking của người nhận để kiểm tra lịch sử biến động số dư chính thức.',
@@ -432,7 +436,11 @@ export function createExpressApp() {
         },
         evidenceFound,
         threatClassification: {
-          primaryThreat: 'Biên Lai Chuyển Tiền Giả Mạo (Fake Bank Receipt)',
+          primaryThreat: notAssessed
+            ? 'Chưa đánh giá được biên lai'
+            : riskScore >= 35
+              ? 'Biên Lai Chuyển Tiền Giả Mạo (Fake Bank Receipt)'
+              : 'Chưa thấy dấu hiệu chỉnh sửa rõ ràng',
           attackVector: 'Chỉnh sửa đồ họa biên lai (Visual Manipulation)',
           target: 'Hàng hóa / Tiền cọc của người bán',
           potentialImpact: ['Mất hàng hóa mà không nhận được tiền', 'Bị lừa chuyển khoản ngược'],
@@ -463,37 +471,73 @@ export function createExpressApp() {
     return res.json(features);
   });
 
-  // Blacklist query and crowd-sourced reporting
-  const COMMUNITY_BLACKLIST = [
-    {
-      identifier: '02473022626',
-      type: 'phone',
-      riskLevel: 'EXTREME',
-      reportsCount: 142,
-      lastReported: '2026-09-28',
-      tags: ['Mạo danh Công an', 'Đe dọa rửa tiền', 'Ép chuyển tiền bảo lãnh'],
-      details: 'Đối tượng tự xưng là cán bộ Công An điều tra vụ án ma túy, yêu cầu kết bạn Zalo và gửi lệnh bắt giả mạo.'
-    },
-    {
-      identifier: '1028392109',
-      type: 'stk',
-      bankName: 'Vietcombank',
-      riskLevel: 'EXTREME',
-      reportsCount: 89,
-      lastReported: '2026-09-27',
-      tags: ['Tài khoản rác', 'Rửa tiền', 'Nhận tiền cọc lừa đảo'],
-      details: 'Tài khoản mạo danh cơ quan tư pháp nhận tiền bảo lãnh án treo khống.'
-    },
-    {
-      identifier: '0981234567',
-      type: 'phone',
-      riskLevel: 'HIGH',
-      reportsCount: 37,
-      lastReported: '2026-09-25',
-      tags: ['Giả shipper giao hàng', 'Thu COD khống'],
-      details: 'Gọi điện báo có đơn hàng shopee giao đến và yêu cầu chuyển khoản trước 120k.'
-    },
-  ];
+  // Tuổi tên miền tra thật qua RDAP (rdap.org chuyển tiếp tới máy chủ đăng ký của từng đuôi tên miền).
+  // Không tra được thì trả available: false, giao diện phải nói rõ "không tra được", không đoán.
+  const SECOND_LEVEL_SUFFIXES = new Set(['com.vn', 'net.vn', 'org.vn', 'edu.vn', 'gov.vn', 'info.vn', 'biz.vn', 'name.vn', 'pro.vn', 'health.vn', 'ac.vn', 'int.vn', 'co.uk', 'org.uk', 'com.au', 'co.jp', 'com.cn', 'com.sg']);
+
+  function toRegistrableDomain(input: string): string | null {
+    let host = input.trim().toLowerCase();
+    try {
+      host = new URL(/^[a-z]+:\/\//.test(host) ? host : `http://${host}`).hostname;
+    } catch {
+      return null;
+    }
+    host = host.replace(/^www\./, '').replace(/\.$/, '');
+    if (!/^[a-z0-9.-]+$/.test(host) || !host.includes('.')) return null;
+    const labels = host.split('.');
+    const lastTwo = labels.slice(-2).join('.');
+    const take = SECOND_LEVEL_SUFFIXES.has(lastTwo) ? 3 : 2;
+    return labels.slice(-take).join('.');
+  }
+
+  apiRouter.get('/analyze/domain-age', async (req, res) => {
+    const domain = toRegistrableDomain(String(req.query.domain || ''));
+    const checkedAt = new Date().toISOString();
+    if (!domain) {
+      return res.status(400).json({ available: false, error: 'Tên miền không hợp lệ.' });
+    }
+    const source = 'RDAP (rdap.org)';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    try {
+      const r = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`, {
+        headers: { Accept: 'application/rdap+json', 'User-Agent': 'ScamGuardVN/1.0 (du an KHKT hoc sinh)' },
+        signal: controller.signal,
+      });
+      if (!r.ok) {
+        return res.json({
+          available: false,
+          domain,
+          source,
+          checkedAt,
+          reason: r.status === 404
+            ? 'Không tra được: đuôi tên miền này chưa hỗ trợ RDAP (ví dụ .vn) hoặc tên miền chưa được đăng ký.'
+            : `Không tra được: máy chủ RDAP trả mã ${r.status}.`,
+        });
+      }
+      const data: any = await r.json();
+      const reg = Array.isArray(data.events) ? data.events.find((e: any) => e.eventAction === 'registration') : null;
+      if (!reg?.eventDate) {
+        return res.json({ available: false, domain, source, checkedAt, reason: 'Không tra được: dữ liệu RDAP không có ngày đăng ký.' });
+      }
+      const ageDays = Math.floor((Date.now() - new Date(reg.eventDate).getTime()) / 86400000);
+      return res.json({ available: true, domain, registeredAt: reg.eventDate, ageDays, source, checkedAt });
+    } catch (err: any) {
+      return res.json({
+        available: false,
+        domain,
+        source,
+        checkedAt,
+        reason: err?.name === 'AbortError' ? 'Không tra được: máy chủ RDAP không phản hồi trong 6 giây.' : 'Không tra được: lỗi kết nối tới máy chủ RDAP.',
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
+  // Báo cáo SĐT / STK do người dùng gửi trong ứng dụng.
+  // Đây KHÔNG phải cơ sở dữ liệu của Bộ Công an hay NCSC: không có dữ liệu gõ sẵn, mọi báo cáo đều chưa xác minh.
+  const COMMUNITY_BLACKLIST: any[] = [];
 
   apiRouter.get('/blacklist/search', (req, res) => {
     const query = String(req.query.query || '').trim().replace(/[^0-9a-zA-Z]/g, '');
@@ -505,11 +549,12 @@ export function createExpressApp() {
       return res.json({
         found: true,
         data: matched,
+        note: 'Đây là báo cáo của người dùng ScamGuard, chưa được xác minh. Hãy kiểm tra lại ở nguồn chính thức trước khi kết luận.',
       });
     }
     return res.json({
       found: false,
-      message: `Chưa có báo cáo vi phạm nào về [${query}] trong cơ sở dữ liệu NCSC & ScamGuard. Tuy nhiên bạn vẫn cần cẩn trọng xác minh độc lập trước khi giao dịch.`,
+      message: `Chưa có người dùng ScamGuard nào báo cáo [${query}]. ScamGuard không kết nối với cơ sở dữ liệu của cơ quan chức năng, nên kết quả này KHÔNG có nghĩa là số an toàn. Hãy tự tra cứu ở nguồn chính thức và gọi lại tổng đài chính thức của tổ chức được nhắc tên.`,
     });
   });
 
@@ -522,13 +567,13 @@ export function createExpressApp() {
       identifier: String(identifier).trim(),
       type: type === 'stk' ? 'stk' : 'phone',
       bankName: bankName ? String(bankName).trim() : undefined,
-      riskLevel: 'HIGH',
+      riskLevel: 'UNVERIFIED',
       reportsCount: 1,
       lastReported: new Date().toISOString().split('T')[0],
-      tags: ['Cộng đồng báo cáo mới'],
+      tags: ['Người dùng báo cáo – chưa xác minh'],
       details: description || 'Người dùng gửi phản ánh về hành vi lừa đảo qua ứng dụng.',
     });
-    return res.json({ success: true, message: 'Đã tiếp nhận báo cáo thành công.' });
+    return res.json({ success: true, message: 'Đã ghi nhận báo cáo (chưa xác minh). Nếu bạn là nạn nhân, hãy trình báo cơ quan công an nơi gần nhất.' });
   });
 
   // Arena routes
@@ -713,7 +758,12 @@ export function createExpressApp() {
     }
   });
 
+  // Nhật ký có địa chỉ IP người dùng: chỉ xem được khi gửi đúng khóa quản trị (biến môi trường ADMIN_KEY)
   apiRouter.get('/admin/audit-logs', (req, res) => {
+    const adminKey = process.env.ADMIN_KEY;
+    if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
+      return res.status(403).json({ error: 'Không có quyền xem nhật ký quản trị.' });
+    }
     res.json({ logs: getAuditLogs(100), metrics: getGeminiUsageMetrics() });
   });
 
