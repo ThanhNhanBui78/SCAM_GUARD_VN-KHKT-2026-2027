@@ -114,14 +114,14 @@ export const CheckScamView: React.FC<CheckScamViewProps> = ({ onOpenEmergency, o
     phone: {
       text: 'Mô tả kịch bản đe dọa / yêu cầu chuyển khoản từ đối phương (ví dụ: Giả shipper thu tiền COD khống, giả cơ quan điều tra đòi chuyển tiền bảo lãnh)...',
       url: 'Website đối phương yêu cầu truy cập hoặc tải app apk (nếu có)',
-      sender: 'Số điện thoại gọi đến hoặc Số tài khoản ngân hàng nhận tiền thụ hưởng...'
+      sender: 'Số điện thoại gọi/nhắn đến (ví dụ: 098..., 028..., 1900..., +855...)'
     }
   }[targetObject];
 
   // Analyze Link & Text
   const handleAnalyzeText = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!textInput.trim() && !urlInput.trim()) return;
+    if (!textInput.trim() && !urlInput.trim() && !senderInput.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -609,8 +609,8 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
                     {[
                       { id: 'message', label: '💬 MESSAGE', desc: 'Phân tích tin nhắn SMS/Zalo' },
                       { id: 'url', label: '🔗 URL', desc: 'Giám định liên kết web' },
-                      { id: 'email', label: '📧 EMAIL', desc: 'Soi đầu thư giả mạo' },
-                      { id: 'phone', label: '📱 PHONE', desc: 'Truy quét số điện thoại gọi đến' },
+                      { id: 'email', label: '📧 EMAIL', desc: 'Soi tên miền email người gửi' },
+                      { id: 'phone', label: '📱 PHONE', desc: 'Mô tả cuộc gọi + loại số gọi đến' },
                     ].map((obj) => (
                       <button
                         key={obj.id}
@@ -745,7 +745,7 @@ Báo cáo được lập tự động bởi Hệ thống giám định ScamGuard
 
                     <button
                       type="submit"
-                      disabled={loading || (!textInput.trim() && !urlInput.trim())}
+                      disabled={loading || (!textInput.trim() && !urlInput.trim() && !senderInput.trim())}
                       className="flex-1 py-4 rounded-2xl bg-cyan-500 text-slate-950 font-black text-sm hover:bg-cyan-400 transition-all disabled:opacity-40 flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-cyan-500/10 font-mono"
                     >
                       {loading ? (

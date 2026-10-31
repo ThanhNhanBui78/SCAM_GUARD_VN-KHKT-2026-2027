@@ -122,8 +122,8 @@ export const AnalyzeTextSchema = z.object({
   url: z.string().max(2000, 'Đường dẫn URL không được vượt quá 2,000 ký tự').optional(),
   sender: z.string().max(200).optional(),
   channel: z.string().max(50).optional(),
-}).refine(data => data.text || data.url, {
-  message: 'Vui lòng cung cấp ít nhất nội dung văn bản hoặc đường dẫn URL để kiểm tra.',
+}).refine(data => data.text?.trim() || data.url?.trim() || data.sender?.trim(), {
+  message: 'Vui lòng cung cấp ít nhất nội dung tin, đường dẫn URL hoặc người gửi để kiểm tra.',
 });
 
 export const AnalyzeScreenshotSchema = z.object({

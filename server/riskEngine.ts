@@ -144,6 +144,178 @@ export function extractTransparentUrlFeatures(urlStr: string): {
   };
 }
 
+// Phân tích email người gửi: chỉ dùng TÊN MIỀN sau @ (phần tên trước @ vẫn bị che), không tra danh sách đen.
+// Danh sách thương hiệu riêng cho email; bộ chấm link giữ danh sách cũ để kết quả 24 tin đã đo không đổi.
+const SENDER_BRANDS: { brand: string; official: string[] }[] = [
+  { brand: 'vietcombank', official: ['vietcombank.com.vn'] },
+  { brand: 'vcb', official: ['vietcombank.com.vn'] },
+  { brand: 'techcombank', official: ['techcombank.com', 'techcombank.com.vn'] },
+  { brand: 'vietinbank', official: ['vietinbank.vn'] },
+  { brand: 'agribank', official: ['agribank.com.vn'] },
+  { brand: 'bidv', official: ['bidv.com.vn'] },
+  { brand: 'mbbank', official: ['mbbank.com.vn'] },
+  { brand: 'acb', official: ['acb.com.vn'] },
+  { brand: 'vpbank', official: ['vpbank.com.vn'] },
+  { brand: 'tpbank', official: ['tpb.vn', 'tpbank.vn'] },
+  { brand: 'sacombank', official: ['sacombank.com', 'sacombank.com.vn'] },
+  { brand: 'momo', official: ['momo.vn'] },
+  { brand: 'zalopay', official: ['zalopay.vn'] },
+  { brand: 'zalo', official: ['zalo.me', 'zalo.vn'] },
+  { brand: 'viettel', official: ['viettel.com.vn', 'viettel.vn'] },
+  { brand: 'vneid', official: ['vneid.gov.vn'] },
+  { brand: 'dichvucong', official: ['dichvucong.gov.vn'] },
+  { brand: 'shopee', official: ['shopee.vn', 'shopee.com'] },
+  { brand: 'lazada', official: ['lazada.vn', 'lazada.com'] },
+  { brand: 'tiktok', official: ['tiktok.com'] },
+  { brand: 'netflix', official: ['netflix.com'] },
+  { brand: 'facebook', official: ['facebook.com', 'facebookmail.com', 'meta.com'] },
+  { brand: 'google', official: ['google.com', 'accounts.google.com'] },
+  { brand: 'apple', official: ['apple.com', 'icloud.com'] },
+  { brand: 'microsoft', official: ['microsoft.com', 'outlook.com'] },
+  { brand: 'paypal', official: ['paypal.com'] },
+];
+const FREE_MAIL_DOMAINS = ['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.vn', 'outlook.com', 'hotmail.com', 'live.com', 'icloud.com', 'proton.me', 'protonmail.com', 'yandex.com', 'mail.ru'];
+// Thương hiệu tài chính, ví điện tử: nhắc tên trong nội dung mới coi là tự xưng (bạn bè nói "xem trên Facebook" thì không tính)
+const CLAIM_BRANDS = ['vietcombank', 'techcombank', 'vietinbank', 'agribank', 'bidv', 'mbbank', 'vpbank', 'tpbank', 'sacombank', 'momo', 'zalopay', 'paypal'];
+// Chữ "ngân hàng" đứng riêng không tính (thư trường học nhắc "đóng học phí qua ngân hàng"); chỉ tính khi tự giới thiệu là ngân hàng
+const ORG_CLAIM_WORDS = ['ngan hang thong bao', 'ngan hang xin thong bao', 'nhan vien ngan hang', 'bo phan ho tro ngan hang', 'cong an', 'bo cong an', 'vien kiem sat', 'toa an', 'co quan nha nuoc', 'co quan chuc nang', 'cuc thue', 'chi cuc thue', 'bao hiem xa hoi', 'bhxh', 'dien luc', 'evn', 'buu dien', 'vneid', 'dich vu cong'];
+
+const toPlain = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd');
+const claimsOrganization = (plain: string, extraWords: string[] = []) =>
+  [...ORG_CLAIM_WORDS, ...extraWords].some((w) => plain.includes(w)) || CLAIM_BRANDS.some((b) => plain.includes(b));
+
+const SENDER_ONLY_NOTE = ' Kết quả chỉ dựa trên người gửi, hãy dán thêm nội dung tin để giám định đầy đủ.';
+
+export function analyzeSenderEmail(sender: string, text: string): {
+  domain: string;
+  isFreeMail: boolean;
+  signals: RiskSignal[];
+  score: number;
+  impersonatedBrand?: string;
+} | undefined {
+  const match = sender.trim().toLowerCase().match(/^[^\s@]+@([a-z0-9.-]+\.[a-z0-9-]{2,})$/i);
+  if (!match) return undefined;
+  const domain = match[1].replace(/\.+$/, '');
+  const official = (d: string) => domain === d || domain.endsWith(`.${d}`);
+  const tokens = domain.split(/[.-]/);
+  const plain = toPlain(text);
+
+  const signals: RiskSignal[] = [];
+  let score = 0;
+
+  // 1. Tên miền nhại thương hiệu (tên ngắn như "vcb", "acb" phải là một cụm riêng để tránh trùng chữ)
+  const hit = SENDER_BRANDS.find(({ brand }) => (brand.length <= 4 ? tokens.includes(brand) : domain.includes(brand)));
+  const impersonatedBrand = hit && !hit.official.some(official) ? hit.brand : undefined;
+  if (impersonatedBrand) {
+    score += 20;
+    signals.push({
+      name: 'Email Người Gửi Nhại Thương Hiệu (Sender Spoofing)',
+      scoreContribution: 20,
+      description: `Tên miền người gửi "${domain}" có chữ ${impersonatedBrand.toUpperCase()} nhưng không phải tên miền chính thức của thương hiệu này.`,
+      category: 'Domain',
+    });
+  }
+
+  // 2. Email miễn phí nhưng nội dung tự xưng ngân hàng, cơ quan hoặc thương hiệu
+  const isFreeMail = FREE_MAIL_DOMAINS.includes(domain);
+  const claimsOrg = claimsOrganization(plain);
+  if (isFreeMail && claimsOrg) {
+    score += 20;
+    signals.push({
+      name: 'Tự Xưng Tổ Chức Nhưng Dùng Email Miễn Phí (Free Mail Impersonation)',
+      scoreContribution: 20,
+      description: `Nội dung nhắc tới ngân hàng/cơ quan/thương hiệu nhưng thư gửi từ hộp thư miễn phí ${domain}. Tổ chức thật thường gửi từ tên miền riêng của họ.`,
+      category: 'Impersonation',
+    });
+  }
+
+  // 3. Đuôi tên miền rẻ tiền hoặc ký tự đồng hình (punycode)
+  if (!isFreeMail) {
+    const f = extractTransparentUrlFeatures(domain);
+    if (f.suspiciousTld || f.hasPunycode) {
+      score += 15;
+      signals.push({
+        name: 'Tên Miền Email Đáng Ngờ (Suspicious Sender Domain)',
+        scoreContribution: 15,
+        description: f.hasPunycode
+          ? `Tên miền người gửi "${domain}" dùng ký tự đồng hình Punycode, dễ nhìn nhầm với tên miền thật.`
+          : `Tên miền người gửi dùng đuôi chi phí thấp, rủi ro cao (${domain.slice(domain.lastIndexOf('.'))}).`,
+        category: 'Domain',
+      });
+    }
+  }
+
+  return { domain, isFreeMail, signals, score, impersonatedBrand };
+}
+
+// Phân tích số người gửi: chỉ xét LOẠI số (di động, máy bàn, tổng đài, nước ngoài), không tra và không kết luận
+// "số này lừa đảo". Chỉ cộng điểm khi loại số không khớp với tổ chức mà nội dung tự xưng.
+// Nhà mạng thật nhắn bằng tên thương hiệu hoặc đầu số ngắn, nên tự xưng nhà mạng/tổng đài từ số di động cũng tính.
+const PHONE_CLAIM_WORDS = ['viettel', 'vinaphone', 'mobifone', 'nha mang', 'tong dai vien'];
+export type SenderPhoneKind = 'MOBILE_VN' | 'LANDLINE_VN' | 'HOTLINE_VN' | 'SHORT_CODE' | 'FOREIGN' | 'BRANDNAME' | 'UNKNOWN';
+const PHONE_KIND_LABEL: Record<SenderPhoneKind, string> = {
+  MOBILE_VN: 'số di động Việt Nam',
+  LANDLINE_VN: 'số máy bàn Việt Nam (02x)',
+  HOTLINE_VN: 'số tổng đài 1800/1900',
+  SHORT_CODE: 'đầu số ngắn',
+  FOREIGN: 'số nước ngoài',
+  BRANDNAME: 'tên thương hiệu SMS (brandname)',
+  UNKNOWN: 'chưa nhận dạng được loại số',
+};
+
+export function classifySenderPhone(sender: string): SenderPhoneKind | undefined {
+  const raw = sender.trim();
+  if (!raw || raw.includes('@')) return undefined;
+  if (/[a-z]/i.test(raw)) return /^[a-z0-9_. -]{2,20}$/i.test(raw) ? 'BRANDNAME' : undefined;
+  if (!/^[+\d\s().-]+$/.test(raw)) return undefined;
+  let digits = raw.replace(/\D/g, '');
+  const international = raw.startsWith('+') || digits.startsWith('00');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (international || (digits.startsWith('84') && digits.length >= 11)) {
+    if (!digits.startsWith('84')) return 'FOREIGN';
+    digits = '0' + digits.slice(2);
+  }
+  if (/^0[35789]\d{8}$/.test(digits)) return 'MOBILE_VN';
+  if (/^02\d{9}$/.test(digits)) return 'LANDLINE_VN';
+  if (/^1[89]00\d{4,6}$/.test(digits)) return 'HOTLINE_VN';
+  if (/^\d{3,5}$/.test(digits)) return 'SHORT_CODE';
+  return 'UNKNOWN';
+}
+
+export function analyzeSenderPhone(sender: string, text: string): {
+  kind: SenderPhoneKind;
+  label: string;
+  signals: RiskSignal[];
+  score: number;
+} | undefined {
+  const kind = classifySenderPhone(sender);
+  if (!kind) return undefined;
+  const label = PHONE_KIND_LABEL[kind];
+  const claimsOrg = claimsOrganization(toPlain(text), PHONE_CLAIM_WORDS);
+  const signals: RiskSignal[] = [];
+  let score = 0;
+
+  if (kind === 'FOREIGN') {
+    score += 15;
+    signals.push({
+      name: 'Liên Lạc Từ Số Nước Ngoài (Foreign Number)',
+      scoreContribution: 15,
+      description: 'Người gửi dùng số nước ngoài. Nếu không quen người này, hãy cẩn thận: nhiều cuộc gọi lừa đảo xuất phát từ số nước ngoài.',
+      category: 'Impersonation',
+    });
+  }
+  if (claimsOrg && (kind === 'MOBILE_VN' || kind === 'FOREIGN')) {
+    score += 20;
+    signals.push({
+      name: 'Tự Xưng Tổ Chức Nhưng Dùng Số Cá Nhân (Personal Number Impersonation)',
+      scoreContribution: 20,
+      description: `Nội dung tự xưng ngân hàng/cơ quan/nhà mạng nhưng liên lạc từ ${label}. Ngân hàng, cơ quan nhà nước, nhà mạng thường nhắn bằng tên thương hiệu hoặc gọi từ tổng đài chính thức.`,
+      category: 'Impersonation',
+    });
+  }
+  return { kind, label, signals, score };
+}
+
 /**
  * AI Safety & Hallucination Guardrail
  * Sanitizes model assertions, replaces ungrounded absolutes with calibrated probabilistic terms.
@@ -187,6 +359,10 @@ export async function analyzeScamContent(req: RawAnalysisRequest): Promise<Analy
   const rawInput = (req.text || '') + (req.url ? ` URL: ${req.url}` : '') + (req.sender ? ` Sender: ${req.sender}` : '');
   const { text: sanitizedText, piiRedacted } = sanitizeAndRedactPII(rawInput);
   const cleanInput = defendPromptInjection(sanitizedText);
+  // Email người gửi bị che ở bước trên, nên phân tích tên miền từ bản gốc trước khi che
+  const senderEmail = req.sender ? analyzeSenderEmail(req.sender, req.text || '') : undefined;
+  const senderPhone = req.sender && !senderEmail ? analyzeSenderPhone(req.sender, req.text || '') : undefined;
+  const senderOnly = !(req.text || '').trim() && !(req.url || '').trim() && !!(req.sender || '').trim();
 
   const randomHex = Math.floor(100000 + Math.random() * 900000).toString(16).toUpperCase();
   const assessmentId = `SG-RES-${randomHex}`;
@@ -321,6 +497,12 @@ export async function analyzeScamContent(req: RawAnalysisRequest): Promise<Analy
   });
   if (extraMatches >= 2) heuristicScore += 15;
 
+  const senderCheck = senderEmail || senderPhone;
+  if (senderCheck) {
+    signals.push(...senderCheck.signals);
+    heuristicScore += senderCheck.score;
+  }
+
 heuristicScore = Math.min(99, heuristicScore);
   let defaultRiskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE' = 'SAFE';
   if (heuristicScore >= 70) defaultRiskLevel = 'HIGH';
@@ -334,6 +516,15 @@ heuristicScore = Math.min(99, heuristicScore);
       title: 'Brand Impersonation in URL',
       snippet: urlFeatures.domain,
       description: `Tên miền sử dụng thương hiệu [${urlFeatures.targetedBrand?.toUpperCase()}] nhưng không thuộc dải máy chủ chính thống.`,
+    });
+  }
+
+  if (senderEmail?.impersonatedBrand) {
+    evidenceList.push({
+      severity: 'high',
+      title: 'Brand Impersonation in Sender Email',
+      snippet: `***@${senderEmail.domain}`,
+      description: `Email người gửi dùng tên ${senderEmail.impersonatedBrand.toUpperCase()} trong tên miền không chính thức.`,
     });
   }
 
@@ -352,9 +543,10 @@ heuristicScore = Math.min(99, heuristicScore);
     riskLevel: defaultRiskLevel,
     riskScore: heuristicScore,
     signals,
-    summary: hasSignals
+    summary: (hasSignals
       ? `Bộ quy tắc phát hiện ${signalNames.length} dấu hiệu đáng ngờ: ${signalNames.slice(0, 3).join('; ')}.`
-      : 'Bộ quy tắc chưa phát hiện dấu hiệu lừa đảo quen thuộc. Điểm thấp không có nghĩa là chắc chắn an toàn: nếu tin nhắn đòi tiền, mã OTP hoặc thông tin cá nhân, hãy xác minh qua kênh chính thức.',
+      : 'Bộ quy tắc chưa phát hiện dấu hiệu lừa đảo quen thuộc. Điểm thấp không có nghĩa là chắc chắn an toàn: nếu tin nhắn đòi tiền, mã OTP hoặc thông tin cá nhân, hãy xác minh qua kênh chính thức.')
+      + (senderOnly ? SENDER_ONLY_NOTE : ''),
     detectedTactics: ruleTactics,
     explanationsByPersona: hasSignals
       ? {
@@ -393,7 +585,7 @@ heuristicScore = Math.min(99, heuristicScore);
     evidenceFound: evidenceList,
     threatClassification: {
       primaryThreat: hasSignals ? signals[0].name : 'Chưa phát hiện mối đe dọa rõ ràng',
-      attackVector: req.url ? 'Malicious URL' : 'Manipulative Message',
+      attackVector: req.url ? 'Malicious URL' : senderOnly ? 'Sender Identity' : 'Manipulative Message',
       target: hasSignals ? 'Credentials & Assets' : 'Không xác định',
       potentialImpact: hasSignals ? ['Financial Loss', 'Account Takeover'] : [],
       confidence: 88,
@@ -416,6 +608,9 @@ heuristicScore = Math.min(99, heuristicScore);
     const prompt = `Bạn là SCAMGUARD AI - Công cụ phân tích pháp y phòng chống lừa đảo trực tuyến cho đề tài NCKH ViSEF.
 Hãy phân tích nội dung sau theo quy trình khoa học:
 "${cleanInput}"
+${senderEmail ? `Thông tin người gửi (đã che phần tên trước @): email gửi từ tên miền "${senderEmail.domain}"${senderEmail.isFreeMail ? ' (hộp thư miễn phí)' : ''}. Hãy xét tên miền này có khớp với tổ chức mà nội dung tự xưng hay không.` : ''}
+${senderPhone ? `Thông tin người gửi (đã che số): ${senderPhone.label}. Hãy xét loại số này có khớp với tổ chức mà nội dung tự xưng hay không; không kết luận số này là lừa đảo chỉ vì loại số.` : ''}
+${senderOnly ? 'Người dùng CHỈ cung cấp thông tin người gửi, không có nội dung tin. Chỉ đánh giá dựa trên người gửi, không suy diễn nội dung.' : ''}
 
 ${req.base64Image ? 'Đã đính kèm ảnh chụp màn hình để giám định pháp y thị giác.' : ''}
 
@@ -510,6 +705,7 @@ Trả về JSON chuẩn xác:
   // LAYER 5: Safety & Calibration Verification Guardrail
   const safetyEnforced = enforceSafetyAndCalibration(finalResult);
   finalResult.summary = safetyEnforced.sanitizedSummary;
+  if (senderOnly && !finalResult.summary.includes(SENDER_ONLY_NOTE.trim())) finalResult.summary += SENDER_ONLY_NOTE;
   finalResult.riskLevel = safetyEnforced.calibratedRiskLevel as any;
   if (finalResult.threatClassification) {
     finalResult.threatClassification.confidence = safetyEnforced.calibratedConfidence;
